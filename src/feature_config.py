@@ -136,7 +136,7 @@ GENDER_CLEANING = {
         "afab": "Other/Non-binary",
         "transgender woman": "Other/Non-binary",
     },
-}                                                                                                                                               1                     
+}  
 
 # ---------------------------------------------------------------------------
 # 3) Ordinal columns: category order matters. Map column -> list of
