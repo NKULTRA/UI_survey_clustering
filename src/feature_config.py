@@ -104,9 +104,39 @@ GENDER_CLEANING = {
     "new_col": "gender_cleaned",
     "other_label": "Other/Non-binary",
     "synonym_map": {
-        # TODO: fill in once full value_counts() reviewed
+        # Male
+        "male": "Male", "m": "Male", "cis man": "Male", "male (cis)": "Male", "man": "Male",
+        "cis male": "Male", "sex is male": "Male", "cis dude": "Male", "cisdude": "Male",
+        "cis-male": "Male", "cis man ": "Male", "malr": "Male",  # typo
+        "mail": "Male",  # typo
+        "dude": "Male",
+
+        # Female
+        "female": "Female", "f": "Female", "woman": "Female", "i identify as female.": "Female",
+        "female assigned at birth": "Female", "fm": "Female", "cis female": "Female", "female/woman": "Female",
+        "cisgender female": "Female", "cis-woman": "Female", "fem": "Female",
+        "female (props for making this a freeform field, though)": "Female",
+
+        # Non-binary / genderqueer / trans / other explicit identities
+        "non-binary": "Other/Non-binary", "agender": "Other/Non-binary", "nonbinary": "Other/Non-binary",
+        "genderqueer": "Other/Non-binary", "genderfluid": "Other/Non-binary", "bigender": "Other/Non-binary",
+        "androgynous": "Other/Non-binary", "enby": "Other/Non-binary", "transitioned, m2f": "Other/Non-binary",
+        "genderfluid (born female)": "Other/Non-binary", "other/transfeminine": "Other/Non-binary",
+        "female or multi-gender femme": "Other/Non-binary",  # fixed casing
+        "other": "Other/Non-binary",
+        "nb masculine": "Other/Non-binary",
+        "genderqueer woman": "Other/Non-binary",
+        "mtf": "Other/Non-binary",
+        "queer": "Other/Non-binary",
+        "fluid": "Other/Non-binary",
+        "male/genderqueer": "Other/Non-binary",
+        "male (trans, ftm)": "Other/Non-binary",
+        "genderflux demi-girl": "Other/Non-binary",
+        "female-bodied; no feelings about gender": "Other/Non-binary",
+        "afab": "Other/Non-binary",
+        "transgender woman": "Other/Non-binary",
     },
-}
+}                                                                                                                                               1                     
 
 # ---------------------------------------------------------------------------
 # 3) Ordinal columns: category order matters. Map column -> list of
@@ -131,10 +161,18 @@ ORDINAL_COLUMNS = {
     'willingness_share_mental_illness': ['Not open at all', 'Somewhat not open', 'Neutral', 'Somewhat open', 'Very open'],
     'interferes_with_work_treated': ['Never', 'Rarely', 'Sometimes', 'Often'],
     'works_remotely': ['Never', 'Sometimes', 'Always'],
-    'percentage_affected': ['1-25%', '26-50%', '51-75%', '76-100%'],  # FIXED: matches actual data categories (no 0-10%/11-25% split exists)
-
-    # --- NOT YET ADDED, see error list ---
-    # 'previous_employers_mental_health_benefits': ['No, none did', 'Some did', 'Yes, they all did'],
+    'percentage_affected': ['1-25%', '26-50%', '51-75%', '76-100%'], 
+    'negative_consequences_discussion': ['No', 'Maybe', 'Yes'],
+    'negative_consequences_physical_health': ['No', 'Maybe', 'Yes'],
+    'comfortable_discussing_with_coworkers': ['No', 'Maybe', 'Yes'],
+    'comfortable_discussing_with_supervisor': ['No', 'Maybe', 'Yes'],
+    'potential_employer_physical_health': ['No', 'Maybe', 'Yes'],
+    'potential_employer_mental_health': ['No', 'Maybe', 'Yes'],
+    'less_likely_reveal_mental_health': ['No', 'Maybe', 'Yes'],
+    'past_mental_health_disorder': ['No', 'Maybe', 'Yes'],
+    'current_mental_health_disorder': ['No', 'Maybe', 'Yes'],
+    'previous_employers_mental_health_benefits': ['No, none did', 'Some did', 'Yes, they all did'],
+    'awareness_mental_health_care': ['No', 'I am not sure', 'Yes'],
 }
 
 # ---------------------------------------------------------------------------
@@ -142,6 +180,7 @@ ORDINAL_COLUMNS = {
 # ---------------------------------------------------------------------------
 NOMINAL_COLUMNS = [
     "company_size",
+    "mental_health_benefits"
 ]
 
 # ---------------------------------------------------------------------------
@@ -155,20 +194,11 @@ BINARY_COLUMNS = {
     "tech_company": None,  # already 0/1
     "tech_role": None,  # already 0/1
     "formal_mental_health_discussion": {"Yes": 1, "No": 0},
-    "awareness_mental_health_care": {"Yes": 1, "No": 0},
-    "mental_health_benefits": {"Yes": 1, "No": 0},
     "mental_health_resources": {"Yes": 1, "No": 0},
     "anonymity_protected": {"Yes": 1, "No": 0},
-    "negative_consequences_discussion": {"Yes": 1, "No": 0},
-    "negative_consequences_physical_health": {"Yes": 1, "No": 0},
-    "comfortable_discussing_with_coworkers": {"Yes": 1, "No": 0},
-    "comfortable_discussing_with_supervisor": {"Yes": 1, "No": 0},
     "employer_takes_mental_health_seriously": {"Yes": 1, "No": 0},
     "medical_coverage": None,  # already 0/1
     "negative_consequences_open_about_mental_health": {"Yes": 1, "No": 0},  # OK -- truly 2 values
-    "potential_employer_physical_health": {"Yes": 1, "No": 0},
-    "potential_employer_mental_health": {"Yes": 1, "No": 0},
-    "less_likely_reveal_mental_health": {"Yes": 1, "No": 0},
     "family_history_mental_illness": {"Yes": 1, "No": 0},
     "past_mental_health_disorder": {"Yes": 1, "No": 0},
     "current_mental_health_disorder": {"Yes": 1, "No": 0},
