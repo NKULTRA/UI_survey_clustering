@@ -22,21 +22,27 @@ def drop_columns(df: pd.DataFrame, columns: list) -> pd.DataFrame:
     return df.drop(columns=existing)
 
 
-def mark_special_na_as_category(df: pd.DataFrame, special_na_map: dict) -> pd.DataFrame:
+def extract_special_na_flags(df: pd.DataFrame, special_na_map: dict) -> pd.DataFrame:
     """
-    Ensure values like 'I don't know' / 'N/A (not currently aware)' are
-    treated as their own explicit category and are NOT accidentally
-    coerced to NaN later on. Documentation/assertion hook -- extend with
-    a dedicated flag column per special value if needed later.
+    For any column containing a value from special_na_map, create a new
+    '{col}_special' column holding that value as its own category
+    (NaN elsewhere) -- so it's preserved as data rather than silently
+    disappearing into NaN when encode_ordinal/encode_binary run on the
+    original column afterward.
     """
-    global_values = special_na_map.get("*", [])
+    df = df.copy()
+    global_values = set(special_na_map.get("*", []))
+
     for col in df.columns:
-        col_values = special_na_map.get(col, [])
-        values_to_protect = set(global_values) | set(col_values)
-        if values_to_protect:
-            mask = df[col].isin(values_to_protect)
-            # no-op placeholder -- these values pass through unchanged.
-            pass
+        col_values = set(special_na_map.get(col, []))
+        values_to_protect = global_values | col_values
+        if not values_to_protect:
+            continue
+
+        mask = df[col].isin(values_to_protect)
+        if mask.any():
+            df[f"{col}_special"] = df[col].where(mask, other=np.nan)
+
     return df
 
 
@@ -71,9 +77,7 @@ def clean_gender(df: pd.DataFrame, col: str = "gender", new_col: str = "gender_c
     Normalize free-text gender responses: lowercase/strip, map common
     synonyms to a small set of labels, and fold unmatched low-frequency
     responses into `other_label`. synonym_map keys must already be
-    lowercase/stripped. Extend synonym_map to add explicit categories
-    (e.g. 'Non-binary', 'Transgender') rather than routing everything
-    to Other, as data volume allows -- see conversation/DECISIONS.md.
+    lowercase/stripped.
     """
     df = df.copy()
     normalized = df[col].astype(str).str.strip().str.lower()
@@ -81,7 +85,6 @@ def clean_gender(df: pd.DataFrame, col: str = "gender", new_col: str = "gender_c
     mapping = synonym_map or {}
     mapped = normalized.map(mapping)
 
-    # Anything not explicitly mapped falls back to the residual category
     df[new_col] = mapped.fillna(other_label)
     return df
 
@@ -101,8 +104,7 @@ def split_direction_and_basis(df: pd.DataFrame, col: str, direction_map: dict, b
 
 def apply_direction_basis_columns(df: pd.DataFrame, direction_basis_config: dict) -> pd.DataFrame:
     """
-    Applies split_direction_and_basis to every column listed in the config
-    (e.g. career_harm, coworker_view, unsupportive_response_observed),
+    Applies split_direction_and_basis to every column listed in the config,
     using each column's own direction_map/basis_map. Drops the original
     column afterward since it's now represented by the two split columns.
     """
@@ -155,8 +157,6 @@ def split_multiselect(df: pd.DataFrame, columns: list, delimiter: str = "|") -> 
     """
     Turn a pipe-separated multi-select column into one binary flag
     column per distinct value found across the whole column.
-    e.g. "diagnosed_conditions" -> diagnosed_conditions__anxiety,
-    diagnosed_conditions__mood_disorder, ...
     Drops the original column after expansion.
     """
     df = df.copy()
@@ -183,8 +183,7 @@ def split_multiselect(df: pd.DataFrame, columns: list, delimiter: str = "|") -> 
 def extract_text_keyword_features(df: pd.DataFrame, text_config: dict) -> pd.DataFrame:
     """
     Create binary theme-flag features from free-text columns based on
-    keyword lists, instead of full TF-IDF -- more interpretable and
-    more robust given small sample size / high response variability.
+    keyword lists, instead of full TF-IDF.
     Drops the original free-text column after extraction.
     """
     df = df.copy()
@@ -216,17 +215,35 @@ def _slugify(value: str) -> str:
     )
 
 
+def encode_special_flags(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    One-hot encode any auto-generated '_special' columns created by
+    extract_special_na_flags (e.g. medical_leave_request_special holding
+    "I don't know"). Runs alongside encode_nominal near the end of the
+    pipeline, after the original columns have already been ordinal/binary
+    encoded.
+    """
+    special_cols = [c for c in df.columns if c.endswith("_special")]
+    if not special_cols:
+        return df
+    return pd.get_dummies(df, columns=special_cols, prefix=special_cols, dummy_na=False)
+
+
 def run_pipeline(df: pd.DataFrame, config) -> pd.DataFrame:
     """
     Apply all preprocessing steps in a sensible order:
-    rename -> drop -> mark special NA -> age cleaning/bucketing ->
+    rename -> drop -> extract special-NA flags -> age cleaning/bucketing ->
     gender cleaning -> multiselect split -> text keyword extraction ->
     direction/basis splits -> ordinal encode -> binary encode ->
-    nominal one-hot encode.
+    nominal one-hot encode -> special-flag one-hot encode.
     """
     df = rename_columns(df, config.COLUMN_RENAME_MAP)
     df = drop_columns(df, config.DROP_COLUMNS)
-    df = mark_special_na_as_category(df, config.SPECIAL_NA_AS_CATEGORY)
+
+    # Must run BEFORE ordinal/binary encoding, so special values (e.g.
+    # "I don't know", "Not applicable to me") are captured into their own
+    # flag columns before the original column's non-mapped values become NaN.
+    df = extract_special_na_flags(df, config.SPECIAL_NA_AS_CATEGORY)
 
     df = clean_age(df, **config.AGE_CLEANING)
     df = bucket_age(df, **config.AGE_BUCKETING)
@@ -240,4 +257,5 @@ def run_pipeline(df: pd.DataFrame, config) -> pd.DataFrame:
     df = encode_ordinal(df, config.ORDINAL_COLUMNS)
     df = encode_binary(df, config.BINARY_COLUMNS)
     df = encode_nominal(df, config.NOMINAL_COLUMNS)
+    df = encode_special_flags(df)
     return df

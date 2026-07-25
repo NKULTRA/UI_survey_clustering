@@ -46,3 +46,27 @@
 - Free-text "why or why not" columns were handled via simple keyword-presence flags (e.g. mentions 
   of "stigma", "fear") rather than full TF-IDF/bag-of-words, given the small sample size and high 
   vocabulary variability relative to the number of responses
+  - The SPECIAL_NA_AS_CATEGORY global ("*") list initially included "Maybe"/"I don't know"/
+  "I am not sure"/"Unsure" alongside structural non-applicability values like "Not applicable 
+  to me". This caused a double-encoding bug: for the ~12 columns using one of these values as 
+  an intentional ORDINAL MIDPOINT (e.g. negative_consequences_discussion: No < Maybe < Yes), 
+  the value was being captured a second time as a redundant "_special" flag column, on top of 
+  its ordinal encoding. Fixed by narrowing the global list to ONLY values that are always 
+  structural non-applicability (e.g. "Not applicable to me", "N/A (not currently aware)"), 
+  and instead listing "I don't know" under specific column keys 
+  (formal_mental_health_discussion, anonymity_protected, employer_takes_mental_health_seriously, 
+  family_history_mental_illness, mental_health_resources) where the question asks about an 
+  EXTERNAL FACT rather than the respondent's own degree of certainty, and "I don't know" 
+  should therefore be captured as a separate uncertainty flag rather than an ordinal midpoint
+
+- interferes_with_work_not_treated was verified against its actual value_counts() (Often 538, 
+  Not applicable to me 468, Sometimes 363, Rarely 52, Never 12) and confirmed to use the same 
+  category set as its sibling column (interferes_with_work_treated), just with a very different 
+  distribution (unsurprisingly, most respondents report MORE interference when untreated)
+
+- Ordinal column direction is NOT currently standardized across all columns -- some run 
+  negative-to-positive (e.g. willingness_share_mental_illness: closed -> open), others 
+  positive-to-negative (e.g. medical_leave_request: easy -> difficult). This doesn't affect 
+  the clustering algorithm itself, but will need to be accounted for explicitly when 
+  interpreting cluster centroids/profiles later, since a "high" value doesn't consistently 
+  mean the same thing (more stigma vs. less stigma) across features

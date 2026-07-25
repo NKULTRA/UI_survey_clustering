@@ -77,6 +77,7 @@ COLUMN_RENAME_MAP = {
 DROP_COLUMNS = [
     'us_state_live',  # too many categories for one-hot, not central to the analysis
     'us_state_work',  # too many categories for one-hot, not central to the analysis
+    'country_work',   # ~98% identical to country_live -- redundant, dropped to avoid double-weighting
 ]
 
 # ---------------------------------------------------------------------------
@@ -96,8 +97,7 @@ AGE_BUCKETING = {
 }
 
 # ---------------------------------------------------------------------------
-# 2c) Gender cleaning. Keys must be lowercase/stripped. STILL EMPTY --
-#     needs the full value_counts() to build synonym_map properly.
+# 2c) Gender cleaning. Keys must be lowercase/stripped.
 # ---------------------------------------------------------------------------
 GENDER_CLEANING = {
     "col": "gender",
@@ -122,7 +122,7 @@ GENDER_CLEANING = {
         "genderqueer": "Other/Non-binary", "genderfluid": "Other/Non-binary", "bigender": "Other/Non-binary",
         "androgynous": "Other/Non-binary", "enby": "Other/Non-binary", "transitioned, m2f": "Other/Non-binary",
         "genderfluid (born female)": "Other/Non-binary", "other/transfeminine": "Other/Non-binary",
-        "female or multi-gender femme": "Other/Non-binary",  # fixed casing
+        "female or multi-gender femme": "Other/Non-binary",
         "other": "Other/Non-binary",
         "nb masculine": "Other/Non-binary",
         "genderqueer woman": "Other/Non-binary",
@@ -136,18 +136,26 @@ GENDER_CLEANING = {
         "afab": "Other/Non-binary",
         "transgender woman": "Other/Non-binary",
     },
-}  
+}
 
 # ---------------------------------------------------------------------------
 # 3) Ordinal columns: category order matters. Map column -> list of
-#    categories in order (lowest to highest). "I don't know"/"Maybe"/etc.
-#    are intentionally left OUT of these lists and handled as their own
-#    category (see SPECIAL_NA_AS_CATEGORY + note on that mechanism below).
+#    categories in order (lowest to highest). Midpoint values like
+#    "Maybe"/"I am not sure"/"Unsure" are INCLUDED directly in these lists
+#    where they represent a genuine degree/uncertainty midpoint -- they are
+#    NOT also listed in the global SPECIAL_NA_AS_CATEGORY, to avoid being
+#    double-encoded (see section 8 and DECISIONS.md).
+#
+#    NOTE ON DIRECTION: these are not all oriented the same way (some run
+#    negative->positive, others positive->negative) -- see DECISIONS.md for
+#    the flagged inconsistency; not fixed yet, revisit before interpreting
+#    cluster centroids.
 # ---------------------------------------------------------------------------
 ORDINAL_COLUMNS = {
     'awareness_resources': ["No, I don't know any", 'I know some', 'Yes, I know several'],
     'medical_leave_request': ['Very easy', 'Somewhat easy', 'Neither easy nor difficult', 'Somewhat difficult', 'Very difficult'],
     'reveal_to_coworkers': ["No, because it doesn't matter", 'No, because it would impact me negatively', 'Sometimes, if it comes up', 'Yes, always'],
+    'reveal_to_clients': ["No, because it doesn't matter", 'No, because it would impact me negatively', 'Sometimes, if it comes up', 'Yes, always'],
     'awareness_previous_employers': ["No, I only became aware later", "I was aware of some", "Yes, I was aware of all of them"],
     'previous_employers_mental_health_discussion': ['None did', 'Some did', 'Yes, they all did'],
     'previous_employers_resources': ['None did', 'Some did', 'Yes, they all did'],
@@ -160,8 +168,9 @@ ORDINAL_COLUMNS = {
     'previous_employers_negative_consequences_coworkers': ['None of them', 'Some of them', 'Yes, all of them'],
     'willingness_share_mental_illness': ['Not open at all', 'Somewhat not open', 'Neutral', 'Somewhat open', 'Very open'],
     'interferes_with_work_treated': ['Never', 'Rarely', 'Sometimes', 'Often'],
+    'interferes_with_work_not_treated': ['Never', 'Rarely', 'Sometimes', 'Often'],  # verified against actual value_counts
     'works_remotely': ['Never', 'Sometimes', 'Always'],
-    'percentage_affected': ['1-25%', '26-50%', '51-75%', '76-100%'], 
+    'percentage_affected': ['1-25%', '26-50%', '51-75%', '76-100%'],
     'negative_consequences_discussion': ['No', 'Maybe', 'Yes'],
     'negative_consequences_physical_health': ['No', 'Maybe', 'Yes'],
     'comfortable_discussing_with_coworkers': ['No', 'Maybe', 'Yes'],
@@ -173,6 +182,9 @@ ORDINAL_COLUMNS = {
     'current_mental_health_disorder': ['No', 'Maybe', 'Yes'],
     'previous_employers_mental_health_benefits': ['No, none did', 'Some did', 'Yes, they all did'],
     'awareness_mental_health_care': ['No', 'I am not sure', 'Yes'],
+    'negative_impact_reveal': ['No', "I'm not sure", 'Yes'],
+    'negative_impact_reveal_coworker': ['No', "I'm not sure", 'Yes'],
+    'productivity_affected': ['No', 'Unsure', 'Yes'],
 }
 
 # ---------------------------------------------------------------------------
@@ -180,45 +192,43 @@ ORDINAL_COLUMNS = {
 # ---------------------------------------------------------------------------
 NOMINAL_COLUMNS = [
     "company_size",
-    "mental_health_benefits"
+    "mental_health_benefits",
+    "gender_cleaned",
+    "country_live",  # TODO: bucket into top-N countries + "Other" before one-hot (long tail of n<=10 countries)
 ]
 
 # ---------------------------------------------------------------------------
 # 5) Simple binary columns (already 0/1, or a clean two-value Yes/No).
-#    !! SEE ERROR LIST -- many columns below actually have 3+ categories
-#    in the real data and should NOT be here. Left as-is from your version
-#    so you can compare against the fixes discussed. !!
+#    Columns here where "I don't know" exists in the raw data rely on
+#    extract_special_na_flags (see section 8) to pull that value into a
+#    separate _special column BEFORE this mapping runs -- so the main
+#    column stays a clean Yes/No, and uncertainty is captured separately.
 # ---------------------------------------------------------------------------
 BINARY_COLUMNS = {
     "self_employed": None,  # already 0/1
     "tech_company": None,  # already 0/1
     "tech_role": None,  # already 0/1
-    "formal_mental_health_discussion": {"Yes": 1, "No": 0},
-    "mental_health_resources": {"Yes": 1, "No": 0},
-    "anonymity_protected": {"Yes": 1, "No": 0},
-    "employer_takes_mental_health_seriously": {"Yes": 1, "No": 0},
+    "formal_mental_health_discussion": {"Yes": 1, "No": 0},  # "I don't know" -> special flag
+    "mental_health_resources": {"Yes": 1, "No": 0},  # "I don't know" -> special flag
+    "anonymity_protected": {"Yes": 1, "No": 0},  # "I don't know" -> special flag
+    "employer_takes_mental_health_seriously": {"Yes": 1, "No": 0},  # "I don't know" -> special flag
     "medical_coverage": None,  # already 0/1
-    "negative_consequences_open_about_mental_health": {"Yes": 1, "No": 0},  # OK -- truly 2 values
-    "family_history_mental_illness": {"Yes": 1, "No": 0},
-    "past_mental_health_disorder": {"Yes": 1, "No": 0},
-    "current_mental_health_disorder": {"Yes": 1, "No": 0},
-    "diagnosed_by_professional": {"Yes": 1, "No": 0},  # OK -- truly 2 values
+    "negative_consequences_open_about_mental_health": {"Yes": 1, "No": 0},  # genuinely 2 values, no special flag needed
+    "family_history_mental_illness": {"Yes": 1, "No": 0},  # "I don't know" -> special flag
+    "diagnosed_by_professional": {"Yes": 1, "No": 0},  # genuinely 2 values
     "sought_treatment": None,  # already 0/1
-
-    # --- NOT YET ADDED, see error list ---
-    # "previous_employers": None,  # already 0/1
+    "previous_employers": None,  # already 0/1
 }
 
 # ---------------------------------------------------------------------------
 # 6) Multi-select columns: pipe-separated values -> one binary flag per
-#    distinct value. Currently empty -- see error list re: diagnosed/
-#    believed conditions columns (recommend moving them here instead of
-#    TEXT_COLUMNS to preserve full category granularity).
+#    distinct value.
 # ---------------------------------------------------------------------------
 MULTISELECT_COLUMNS = [
-    # "diagnosed_conditions",
-    # "believed_conditions",
-    # "diagnosed_conditions_professional",
+    "diagnosed_conditions",
+    "believed_conditions",
+    "diagnosed_conditions_professional",
+    "work_position",
 ]
 
 # ---------------------------------------------------------------------------
@@ -278,33 +288,38 @@ TEXT_COLUMNS = {
     },
     "reason_not_willing_mental_health": {
         "keywords": {
-            "stigma": ["stigma"],  # FIXED: was "Stigma" (capitalized) -- never matched lowercased text
+            "stigma": ["stigma"],
         }
     },
-
-    # --- RECOMMEND MOVING THESE THREE TO MULTISELECT_COLUMNS INSTEAD ---
-    # "diagnosed_conditions": {...},
-    # "believed_conditions": {...},
-    # "diagnosed_conditions_professional": {...},
 }
 
 # ---------------------------------------------------------------------------
-# 8) Values that look like missingness but are actually a meaningful,
-#    actively-selected answer -- keep these as their OWN category rather
-#    than collapsing into NaN or into another category.
-#    !! NOTE: mark_special_na_as_category() is currently a no-op in
-#    preprocessing.py -- listing values here does not yet protect them
-#    from becoming NaN in encode_ordinal/encode_binary. See error list. !!
+# 8) Values that are structural non-applicability -- keep these as their
+#    OWN category rather than collapsing into NaN or into another category.
+#
+#    IMPORTANT: the global "*" list must ONLY contain values that are
+#    ALWAYS structural non-applicability, regardless of column. Do NOT put
+#    "Maybe" / "I don't know" / "I am not sure" / "Unsure" here globally --
+#    those are used as intentional ORDINAL MIDPOINTS in most columns (see
+#    section 3), and would otherwise get double-encoded: once as an ordinal
+#    value, and again as a redundant _special flag column.
+#
+#    For the specific columns where "I don't know" should instead be
+#    special-flagged (because the question asks about an external fact,
+#    not the respondent's own degree of certainty), it is listed under
+#    that column's own key below -- not globally. See DECISIONS.md for the
+#    degree-vs-fact reasoning behind which columns land where.
 # ---------------------------------------------------------------------------
 SPECIAL_NA_AS_CATEGORY = {
     "*": [
-        "I don't know",
-        "I am not sure",
-        "Not sure",
-        "Maybe",
         "N/A (not currently aware)",
         "Not eligible for coverage / N/A",
         "Not applicable to me",
         "Not applicable to me (I do not have a mental illness)",
     ],
+    "formal_mental_health_discussion": ["I don't know"],
+    "anonymity_protected": ["I don't know"],
+    "employer_takes_mental_health_seriously": ["I don't know"],
+    "family_history_mental_illness": ["I don't know"],
+    "mental_health_resources": ["I don't know"],
 }

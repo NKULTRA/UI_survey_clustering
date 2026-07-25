@@ -423,6 +423,13 @@ someone said 15? maybe some implausbile values in here
 74      1
 70      1
 
+If you have a mental health issue, do you feel that it interferes with your work when NOT being treated effectively?
+Often                   538
+Not applicable to me    468
+Sometimes               363
+Rarely                   52
+Never                    12
+
 - What is your gender?
 Male                                       610
 male                                       249
@@ -529,6 +536,51 @@ Ecuador                       1
 China                         1
 Guatemala                     1
 Serbia                        1
+
+656     3
+808    15
+93     17
+76     19
+736    19
+754    19
+559    19
+989    20
+528    20
+282    20
+Name: What is your age?, dtype: int64
+
+
+Which of the following best describes your work position?
+Back-end Developer                                                                                                                            263
+Front-end Developer                                                                                                                           125
+Other                                                                                                                                         112
+Supervisor/Team Lead                                                                                                                           68
+Back-end Developer|Front-end Developer                                                                                                         61
+DevOps/SysAdmin                                                                                                                                54
+One-person shop                                                                                                                                50
+Executive Leadership                                                                                                                           46
+Front-end Developer|Back-end Developer                                                                                                         40
+Support                                                                                                                                        34
+Designer                                                                                                                                       28
+Dev Evangelist/Advocate                                                                                                                        28
+Supervisor/Team Lead|Back-end Developer                                                                                                        19
+Front-end Developer|Designer                                                                                                                   18
+DevOps/SysAdmin|Back-end Developer|Front-end Developer                                                                                         17
+Back-end Developer|DevOps/SysAdmin                                                                                                             16
+DevOps/SysAdmin|Back-end Developer                                                                                                             15
+Supervisor/Team Lead|Back-end Developer|Front-end Developer                                                                                    15
+Front-end Developer|Back-end Developer|DevOps/SysAdmin                                                                                         12
+Supervisor/Team Lead|DevOps/SysAdmin|Back-end Developer                                                                                         9
+DevOps/SysAdmin|Support|Back-end Developer|Front-end Developer                                                                                  8
+Supervisor/Team Lead|DevOps/SysAdmin|Back-end Developer|Front-end Developer                                                                     8
+Back-end Developer|One-person shop                                                                                                              7
+Front-end Developer|Back-end Developer|DevOps/SysAdmin|Supervisor/Team Lead                                                                     6
+...
+Other|Supervisor/Team Lead|Dev Evangelist/Advocate                                                                                              1
+Supervisor/Team Lead|Back-end Developer|Designer                                                                                                1
+Back-end Developer|DevOps/SysAdmin|Supervisor/Team Lead|Executive Leadership                                                                    1
+Supervisor/Team Lead|Front-end Developer|Back-end Developer|DevOps/SysAdmin|Dev Evangelist/Advocate 
+
 
 - What US state or territory do you work in?
 NaN                     582
