@@ -108,3 +108,28 @@
   stage. This is intentionally left for the upcoming formal feature selection step (variance 
   thresholding), so that removal of near-zero-variance features follows a documented, 
   principled threshold rather than an ad-hoc frequency cutoff decided by eye
+
+  - country_live: the raw column had 40+ distinct countries, most with very low counts (long tail 
+  down to n=1). Bucketed to the top 11 countries by frequency (down to Brazil/Switzerland, tied 
+  at n=10) plus a residual "Other" category, rather than one-hot encoding the full long tail, 
+  which would have produced dozens of near-empty, uninformative columns
+
+- country_work was dropped entirely (not bucketed) rather than kept alongside country_live: the 
+  two columns were ~98% identical (most respondents work in the same country they live in), so 
+  keeping both would have double-weighted essentially the same signal in clustering
+
+- A hidden non-breaking space character (\xa0, invisible in normal text editors) was found in one 
+  raw column header ("...treatment of [nbsp]mental health issues?"), which silently prevented 
+  that column from matching the rename map and caused it to skip all downstream processing 
+  entirely. Fixed by normalizing all raw column headers (replacing non-breaking spaces, 
+  collapsing repeated whitespace) before applying the rename map, rather than patching this one 
+  column specifically -- since the same class of hidden-character issue could plausibly affect 
+  other columns too
+
+- reveal_to_coworkers and reveal_to_clients were split into two orthogonal dimensions rather than 
+  one 4-point ordinal scale: a "direction" (frequency of disclosure: Never < Sometimes < Always) 
+  and a "basis" (reason for NOT disclosing: indifference vs. fear of negative impact). Forcing 
+  "No, because it doesn't matter" and "No, because it would impact me negatively" onto a single 
+  ordered scale would have required deciding which of two very different non-disclosure reasons 
+  counts as "more/less" favorable than "sometimes discloses" -- an unjustified ordering the two-
+  dimension split avoids
