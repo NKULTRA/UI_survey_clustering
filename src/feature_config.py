@@ -81,9 +81,7 @@ DROP_COLUMNS = [
 ]
 
 # ---------------------------------------------------------------------------
-# 2b) Age cleaning + bucketing. Bounds chosen from inspecting the actual
-#     min/max of the distribution -- min=3 and max=323 in the raw data
-#     are clear data-entry errors / placeholder values (e.g. 99).
+# 2b) Age cleaning + bucketing.
 # ---------------------------------------------------------------------------
 AGE_CLEANING = {
     "col": "age",
@@ -97,27 +95,24 @@ AGE_BUCKETING = {
 }
 
 # ---------------------------------------------------------------------------
-# 2c) Gender cleaning. Keys must be lowercase/stripped.
+# 2c) Gender cleaning.
 # ---------------------------------------------------------------------------
 GENDER_CLEANING = {
     "col": "gender",
     "new_col": "gender_cleaned",
     "other_label": "Other/Non-binary",
     "synonym_map": {
-        # Male
         "male": "Male", "m": "Male", "cis man": "Male", "male (cis)": "Male", "man": "Male",
         "cis male": "Male", "sex is male": "Male", "cis dude": "Male", "cisdude": "Male",
-        "cis-male": "Male", "cis man ": "Male", "malr": "Male",  # typo
-        "mail": "Male",  # typo
+        "cis-male": "Male", "cis man ": "Male", "malr": "Male",
+        "mail": "Male",
         "dude": "Male",
 
-        # Female
         "female": "Female", "f": "Female", "woman": "Female", "i identify as female.": "Female",
         "female assigned at birth": "Female", "fm": "Female", "cis female": "Female", "female/woman": "Female",
         "cisgender female": "Female", "cis-woman": "Female", "fem": "Female",
         "female (props for making this a freeform field, though)": "Female",
 
-        # Non-binary / genderqueer / trans / other explicit identities
         "non-binary": "Other/Non-binary", "agender": "Other/Non-binary", "nonbinary": "Other/Non-binary",
         "genderqueer": "Other/Non-binary", "genderfluid": "Other/Non-binary", "bigender": "Other/Non-binary",
         "androgynous": "Other/Non-binary", "enby": "Other/Non-binary", "transitioned, m2f": "Other/Non-binary",
@@ -138,53 +133,170 @@ GENDER_CLEANING = {
     },
 }
 
+"""
+Template for canonicalizing diagnosed_conditions / believed_conditions /
+diagnosed_conditions_professional before multi-select splitting.
+
+Fill in the "" on the right of each raw value with your chosen canonical
+category label (e.g. "Autism Spectrum", "ADHD", "Anxiety Disorder").
+Leave it as "" for any value you want routed to the residual "Other"
+bucket instead (e.g. one-off free-text write-ins, sarcastic asides).
+
+Use the SAME canonical label spelling across all three dicts for values
+that represent the same underlying condition, so they end up in the
+same final flag column regardless of which source column they came from.
+"""
+
+DIAGNOSED_CONDITIONS_MAP = {
+    "add (w/o hyperactivity)": "",
+    "addictive disorder": "",
+    "anxiety disorder (generalized, social, phobia, etc)": "",
+    "asperges": "",
+    "attention deficit hyperactivity disorder": "",
+    "autism": "",
+    "autism (asperger's)": "",
+    "autism spectrum disorder": "",  # NOTE: also appears lowercased below -- decide if same
+    "burn out": "",
+    'combination of physical impairment (strongly near-sighted) with a possibly mental one (mcd / "adhd", though its actually a stimulus filtering impairment)': "",
+    "depression": "",
+    "dissociative disorder": "",
+    "eating disorder (anorexia, bulimia, etc)": "",
+    "gender dysphoria": "",
+    "i haven't been formally diagnosed, so i felt uncomfortable answering, but social anxiety and depression.": "",
+    "intimate disorder": "",
+    "mood disorder (depression, bipolar disorder, etc)": "",
+    "obsessive-compulsive disorder": "",
+    "pdd-nos": "",
+    "ptsd (undiagnosed)": "",
+    "personality disorder (borderline, antisocial, paranoid, etc)": "",
+    "pervasive developmental disorder (not otherwise specified)": "",
+    "post-traumatic stress disorder": "",
+    "psychotic disorder (schizophrenia, schizoaffective, etc)": "",
+    "schizotypal personality disorder": "",
+    "seasonal affective disorder": "",
+    "sexual addiction": "",
+    "sleeping disorder": "",
+    "stress response syndromes": "",
+    "substance use disorder": "",
+    "transgender": "",
+    "traumatic brain injury": "",
+}
+
+BELIEVED_CONDITIONS_MAP = {
+    "addictive disorder": "",
+    "anxiety disorder (generalized, social, phobia, etc)": "",
+    "asperger syndrome": "",
+    "asperger's": "",
+    "attention deficit hyperactivity disorder": "",
+    "autism": "",
+    "burnout": "",
+    "depersonalisation": "",
+    "dissociative disorder": "",
+    "eating disorder (anorexia, bulimia, etc)": "",
+    "gender identity disorder": "",
+    "mood disorder (depression, bipolar disorder, etc)": "",
+    "obsessive-compulsive disorder": "",
+    "personality disorder (borderline, antisocial, paranoid, etc)": "",
+    "post-traumatic stress disorder": "",
+    "psychotic disorder (schizophrenia, schizoaffective, etc)": "",
+    "stress response syndromes": "",
+    "substance use disorder": "",
+    "suicidal ideation": "",
+    "tinnitus": "",
+    "we're all hurt, right?!": "",
+    "depersonalization disorder": "",
+    "post-partum / anxiety": "",
+}
+
+DIAGNOSED_CONDITIONS_PROFESSIONAL_MAP = {
+    "add (w/o hyperactivity)": "",
+    "addictive disorder": "",
+    "anxiety disorder (generalized, social, phobia, etc)": "",
+    "asperger syndrome": "",
+    "aspergers": "",
+    "attention deficit disorder": "",
+    "attention deficit hyperactivity disorder": "",
+    "autism": "",
+    "autism (asperger's)": "",
+    'autism - while not a "mental illness", still greatly affects how i handle anxiety': "",
+    "autism spectrum disorder": "",
+    "burn out": "",
+    "depression": "",
+    "dissociative disorder": "",
+    "eating disorder (anorexia, bulimia, etc)": "",
+    "gender dysphoria": "",
+    "gender identity disorder": "",
+    "intimate disorder": "",
+    'mcd (when it was diagnosed, the ultra-mega "disorder" adhd didn\'t exist yet)': "",
+    "mood disorder (depression, bipolar disorder, etc)": "",
+    "obsessive-compulsive disorder": "",
+    "pdd-nos": "",
+    "pdd-nos (see above)": "",
+    "personality disorder (borderline, antisocial, paranoid, etc)": "",
+    "post-traumatic stress disorder": "",
+    "psychotic disorder (schizophrenia, schizoaffective, etc)": "",
+    "schizotypal personality disorder": "",
+    "seasonal affective disorder": "",
+    "stress response syndromes": "",
+    "substance use disorder": "",
+    "suicidal ideation": "",
+    "attention deficit disorder (but not the hyperactive version)": "",
+    "autism spectrum disorder ": "",  # NOTE: watch for trailing space vs. line above
+    "posttraumatic stress disourder": "",  # typo variant of PTSD
+}
+
+
 # ---------------------------------------------------------------------------
 # 3) Ordinal columns: category order matters. Map column -> list of
-#    categories in order (lowest to highest). Midpoint values like
-#    "Maybe"/"I am not sure"/"Unsure" are INCLUDED directly in these lists
-#    where they represent a genuine degree/uncertainty midpoint -- they are
-#    NOT also listed in the global SPECIAL_NA_AS_CATEGORY, to avoid being
-#    double-encoded (see section 8 and DECISIONS.md).
+#    categories in order (lowest to highest), where LOWEST = FAVORABLE
+#    (less stigma / more support / more openness), for consistency when
+#    interpreting cluster centroids later.
 #
-#    NOTE ON DIRECTION: these are not all oriented the same way (some run
-#    negative->positive, others positive->negative) -- see DECISIONS.md for
-#    the flagged inconsistency; not fixed yet, revisit before interpreting
-#    cluster centroids.
+#    Exceptions to the favorable=low convention, left in their natural
+#    order instead (see DECISIONS.md):
+#    - works_remotely: frequency-of-remote-work, not an attitude/outcome
+#      measure -- no inherent "favorable" direction to align to.
+#    - past_mental_health_disorder / current_mental_health_disorder:
+#      self-reported health status (absent/uncertain/confirmed), not a
+#      stigma/comfort measure -- No/Maybe/Yes reflects degree of
+#      presence/certainty, not favorability.
 # ---------------------------------------------------------------------------
 ORDINAL_COLUMNS = {
-    'awareness_resources': ["No, I don't know any", 'I know some', 'Yes, I know several'],
+    'awareness_resources': ['Yes, I know several', 'I know some', "No, I don't know any"],
     'medical_leave_request': ['Very easy', 'Somewhat easy', 'Neither easy nor difficult', 'Somewhat difficult', 'Very difficult'],
-    'reveal_to_coworkers': ["No, because it doesn't matter", 'No, because it would impact me negatively', 'Sometimes, if it comes up', 'Yes, always'],
-    'reveal_to_clients': ["No, because it doesn't matter", 'No, because it would impact me negatively', 'Sometimes, if it comes up', 'Yes, always'],
-    'awareness_previous_employers': ["No, I only became aware later", "I was aware of some", "Yes, I was aware of all of them"],
-    'previous_employers_mental_health_discussion': ['None did', 'Some did', 'Yes, they all did'],
-    'previous_employers_resources': ['None did', 'Some did', 'Yes, they all did'],
-    'previous_employers_anonymity_protected': ['No', 'Sometimes', 'Yes, always'],
+    'awareness_previous_employers': ["Yes, I was aware of all of them", "I was aware of some", "No, I only became aware later"],
+    'previous_employers_mental_health_discussion': ['Yes, they all did', 'Some did', 'None did'],
+    'previous_employers_resources': ['Yes, they all did', 'Some did', 'None did'],
+    'previous_employers_anonymity_protected': ['Yes, always', 'Sometimes', 'No'],
     'previous_employers_negative_consequences': ['None of them', 'Some of them', 'Yes, all of them'],
     'previous_employers_negative_consequences_physical': ['None of them', 'Some of them', 'Yes, all of them'],
-    'previous_employers_comfortable_discussing_coworkers': ['No, at none of my previous employers', 'Some of my previous employers', 'Yes, at all of my previous employers'],
-    'previous_employers_comfortable_discussing_supervisor': ['No, at none of my previous employers', 'Some of my previous employers', 'Yes, at all of my previous employers'],
-    'previous_employers_mental_health_seriously': ['None did', 'Some did', 'Yes, they all did'],
+    'previous_employers_comfortable_discussing_coworkers': ['Yes, at all of my previous employers', 'Some of my previous employers', 'No, at none of my previous employers'],
+    'previous_employers_comfortable_discussing_supervisor': ['Yes, at all of my previous employers', 'Some of my previous employers', 'No, at none of my previous employers'],
+    'previous_employers_mental_health_seriously': ['Yes, they all did', 'Some did', 'None did'],  
     'previous_employers_negative_consequences_coworkers': ['None of them', 'Some of them', 'Yes, all of them'],
-    'willingness_share_mental_illness': ['Not open at all', 'Somewhat not open', 'Neutral', 'Somewhat open', 'Very open'],
+    'willingness_share_mental_illness': ['Very open', 'Somewhat open', 'Neutral', 'Somewhat not open', 'Not open at all'],
     'interferes_with_work_treated': ['Never', 'Rarely', 'Sometimes', 'Often'],
-    'interferes_with_work_not_treated': ['Never', 'Rarely', 'Sometimes', 'Often'],  # verified against actual value_counts
-    'works_remotely': ['Never', 'Sometimes', 'Always'],
+    'interferes_with_work_not_treated': ['Never', 'Rarely', 'Sometimes', 'Often'],
+    'works_remotely': ['Never', 'Sometimes', 'Always'],  
     'percentage_affected': ['1-25%', '26-50%', '51-75%', '76-100%'],
     'negative_consequences_discussion': ['No', 'Maybe', 'Yes'],
     'negative_consequences_physical_health': ['No', 'Maybe', 'Yes'],
-    'comfortable_discussing_with_coworkers': ['No', 'Maybe', 'Yes'],
-    'comfortable_discussing_with_supervisor': ['No', 'Maybe', 'Yes'],
-    'potential_employer_physical_health': ['No', 'Maybe', 'Yes'],
-    'potential_employer_mental_health': ['No', 'Maybe', 'Yes'],
+    'comfortable_discussing_with_coworkers': ['Yes', 'Maybe', 'No'],
+    'comfortable_discussing_with_supervisor': ['Yes', 'Maybe', 'No'],
+    'potential_employer_physical_health': ['Yes', 'Maybe', 'No'],
+    'potential_employer_mental_health': ['Yes', 'Maybe', 'No'],
     'less_likely_reveal_mental_health': ['No', 'Maybe', 'Yes'],
-    'past_mental_health_disorder': ['No', 'Maybe', 'Yes'],
-    'current_mental_health_disorder': ['No', 'Maybe', 'Yes'],
-    'previous_employers_mental_health_benefits': ['No, none did', 'Some did', 'Yes, they all did'],
-    'awareness_mental_health_care': ['No', 'I am not sure', 'Yes'],
+    'past_mental_health_disorder': ['No', 'Maybe', 'Yes'], 
+    'current_mental_health_disorder': ['No', 'Maybe', 'Yes'], 
+    'previous_employers_mental_health_benefits': ['Yes, they all did', 'Some did', 'No, none did'],
+    'awareness_mental_health_care': ['Yes', 'I am not sure', 'No'],
     'negative_impact_reveal': ['No', "I'm not sure", 'Yes'],
     'negative_impact_reveal_coworker': ['No', "I'm not sure", 'Yes'],
     'productivity_affected': ['No', 'Unsure', 'Yes'],
+
+    # Produced by DIRECTION_BASIS_COLUMNS split -- frequency dimension, ordinal
+    'reveal_to_coworkers_direction': ['Always', 'Sometimes', 'Never'], 
+    'reveal_to_clients_direction': ['Always', 'Sometimes', 'Never'],
 }
 
 # ---------------------------------------------------------------------------
@@ -194,35 +306,32 @@ NOMINAL_COLUMNS = [
     "company_size",
     "mental_health_benefits",
     "gender_cleaned",
-    "country_live",  # TODO: bucket into top-N countries + "Other" before one-hot (long tail of n<=10 countries)
+    "country_live",  # TODO: bucket into top-N countries + "Other" before one-hot
+    "reveal_to_coworkers_basis",
+    "reveal_to_clients_basis",
 ]
 
 # ---------------------------------------------------------------------------
-# 5) Simple binary columns (already 0/1, or a clean two-value Yes/No).
-#    Columns here where "I don't know" exists in the raw data rely on
-#    extract_special_na_flags (see section 8) to pull that value into a
-#    separate _special column BEFORE this mapping runs -- so the main
-#    column stays a clean Yes/No, and uncertainty is captured separately.
+# 5) Simple binary columns.
 # ---------------------------------------------------------------------------
 BINARY_COLUMNS = {
-    "self_employed": None,  # already 0/1
-    "tech_company": None,  # already 0/1
-    "tech_role": None,  # already 0/1
-    "formal_mental_health_discussion": {"Yes": 1, "No": 0},  # "I don't know" -> special flag
-    "mental_health_resources": {"Yes": 1, "No": 0},  # "I don't know" -> special flag
-    "anonymity_protected": {"Yes": 1, "No": 0},  # "I don't know" -> special flag
-    "employer_takes_mental_health_seriously": {"Yes": 1, "No": 0},  # "I don't know" -> special flag
-    "medical_coverage": None,  # already 0/1
-    "negative_consequences_open_about_mental_health": {"Yes": 1, "No": 0},  # genuinely 2 values, no special flag needed
-    "family_history_mental_illness": {"Yes": 1, "No": 0},  # "I don't know" -> special flag
-    "diagnosed_by_professional": {"Yes": 1, "No": 0},  # genuinely 2 values
-    "sought_treatment": None,  # already 0/1
-    "previous_employers": None,  # already 0/1
+    "self_employed": None,
+    "tech_company": None,
+    "tech_role": None,
+    "formal_mental_health_discussion": {"Yes": 1, "No": 0},
+    "mental_health_resources": {"Yes": 1, "No": 0},
+    "anonymity_protected": {"Yes": 1, "No": 0},
+    "employer_takes_mental_health_seriously": {"Yes": 1, "No": 0},
+    "medical_coverage": None,
+    "negative_consequences_open_about_mental_health": {"Yes": 1, "No": 0},
+    "family_history_mental_illness": {"Yes": 1, "No": 0},
+    "diagnosed_by_professional": {"Yes": 1, "No": 0},
+    "sought_treatment": None,
+    "previous_employers": None,
 }
 
 # ---------------------------------------------------------------------------
-# 6) Multi-select columns: pipe-separated values -> one binary flag per
-#    distinct value.
+# 6) Multi-select columns.
 # ---------------------------------------------------------------------------
 MULTISELECT_COLUMNS = [
     "diagnosed_conditions",
@@ -232,11 +341,37 @@ MULTISELECT_COLUMNS = [
 ]
 
 # ---------------------------------------------------------------------------
-# Direction/basis splits for columns with an orthogonal belief-vs-experience
-# (or observed-vs-experienced) dimension that a single ordinal scale would
-# misrepresent.
+# Direction/basis splits.
 # ---------------------------------------------------------------------------
 DIRECTION_BASIS_COLUMNS = {
+    "reveal_to_coworkers": {
+        "direction_map": {
+            "No, because it doesn't matter": "Never",
+            "No, because it would impact me negatively": "Never",
+            "Sometimes, if it comes up": "Sometimes",
+            "Yes, always": "Always",
+        },
+        "basis_map": {
+            "No, because it doesn't matter": "indifferent",
+            "No, because it would impact me negatively": "fear",
+            "Sometimes, if it comes up": None,
+            "Yes, always": None,
+        },
+    },
+    "reveal_to_clients": {
+        "direction_map": {
+            "No, because it doesn't matter": "Never",
+            "No, because it would impact me negatively": "Never",
+            "Sometimes, if it comes up": "Sometimes",
+            "Yes, always": "Always",
+        },
+        "basis_map": {
+            "No, because it doesn't matter": "indifferent",
+            "No, because it would impact me negatively": "fear",
+            "Sometimes, if it comes up": None,
+            "Yes, always": None,
+        },
+    },
     "career_impact_mental_health": {
         "direction_map": {
             "No, it has not": "No", "No, I don't think it would": "No",
@@ -278,7 +413,7 @@ DIRECTION_BASIS_COLUMNS = {
 }
 
 # ---------------------------------------------------------------------------
-# 7) Free-text columns needing NLP-ish treatment (Unit 4.3 territory).
+# 7) Free-text columns.
 # ---------------------------------------------------------------------------
 TEXT_COLUMNS = {
     "reason_not_willing_physical_health": {
@@ -294,21 +429,7 @@ TEXT_COLUMNS = {
 }
 
 # ---------------------------------------------------------------------------
-# 8) Values that are structural non-applicability -- keep these as their
-#    OWN category rather than collapsing into NaN or into another category.
-#
-#    IMPORTANT: the global "*" list must ONLY contain values that are
-#    ALWAYS structural non-applicability, regardless of column. Do NOT put
-#    "Maybe" / "I don't know" / "I am not sure" / "Unsure" here globally --
-#    those are used as intentional ORDINAL MIDPOINTS in most columns (see
-#    section 3), and would otherwise get double-encoded: once as an ordinal
-#    value, and again as a redundant _special flag column.
-#
-#    For the specific columns where "I don't know" should instead be
-#    special-flagged (because the question asks about an external fact,
-#    not the respondent's own degree of certainty), it is listed under
-#    that column's own key below -- not globally. See DECISIONS.md for the
-#    degree-vs-fact reasoning behind which columns land where.
+# 8) Structural non-applicability values.
 # ---------------------------------------------------------------------------
 SPECIAL_NA_AS_CATEGORY = {
     "*": [
@@ -322,4 +443,10 @@ SPECIAL_NA_AS_CATEGORY = {
     "employer_takes_mental_health_seriously": ["I don't know"],
     "family_history_mental_illness": ["I don't know"],
     "mental_health_resources": ["I don't know"],
+    "previous_employers_anonymity_protected": ["I don't know"],
+    "previous_employers_mental_health_seriously": ["I don't know"],
+    "previous_employers_mental_health_benefits": ["I don't know"],
+    "previous_employers_negative_consequences": ["I don't know"],
+    "previous_employers_comfortable_discussing_supervisor": ["I don't know"],
+    "previous_employers_mental_health_discussion": ["I don't know"],
 }

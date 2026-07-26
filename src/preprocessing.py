@@ -11,6 +11,27 @@ import pandas as pd
 import numpy as np
 
 
+def normalize_raw_column_names(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Normalize raw column headers before renaming: replace non-breaking
+    spaces (\\xa0, common in scraped/exported survey data and invisible
+    in most editors) with regular spaces, collapse repeated whitespace,
+    and strip leading/trailing whitespace. Run this BEFORE rename_columns
+    so COLUMN_RENAME_MAP's keys (plain ASCII strings) match reliably --
+    otherwise a column with a hidden \\xa0 silently fails to rename and
+    skips all downstream processing.
+    """
+    df = df.copy()
+    new_columns = (
+        df.columns
+        .str.replace("\xa0", " ", regex=False)
+        .str.replace(r"\s+", " ", regex=True)
+        .str.strip()
+    )
+    df.columns = new_columns
+    return df
+
+
 def rename_columns(df: pd.DataFrame, rename_map: dict) -> pd.DataFrame:
     """Rename long survey-question columns to short snake_case identifiers."""
     return df.rename(columns=rename_map)
@@ -134,9 +155,28 @@ def encode_ordinal(df: pd.DataFrame, ordinal_map: dict) -> pd.DataFrame:
 
 
 def encode_nominal(df: pd.DataFrame, nominal_columns: list) -> pd.DataFrame:
-    """One-hot encode low-cardinality nominal columns."""
+    """
+    One-hot encode low-cardinality nominal columns. Builds clean,
+    slugified column names (reusing the same _slugify helper as
+    split_multiselect / encode_special_flags) instead of relying on
+    pd.get_dummies' default naming, which would otherwise embed the raw
+    category text -- including spaces, slashes, parentheses, etc. --
+    directly into the column name.
+    """
+    df = df.copy()
     existing = [c for c in nominal_columns if c in df.columns]
-    return pd.get_dummies(df, columns=existing, prefix=existing)
+
+    for col in existing:
+        distinct_values = df[col].dropna().unique()
+        new_columns = {}
+        for value in distinct_values:
+            flag_col = f"{col}_{_slugify(str(value))}"
+            new_columns[flag_col] = (df[col] == value).astype(int)
+
+        df = df.drop(columns=[col])
+        df = pd.concat([df, pd.DataFrame(new_columns, index=df.index)], axis=1)
+
+    return df
 
 
 def encode_binary(df: pd.DataFrame, binary_map: dict) -> pd.DataFrame:
@@ -158,6 +198,12 @@ def split_multiselect(df: pd.DataFrame, columns: list, delimiter: str = "|") -> 
     Turn a pipe-separated multi-select column into one binary flag
     column per distinct value found across the whole column.
     Drops the original column after expansion.
+
+    Builds all new flag columns in a dict first and attaches them via a
+    single pd.concat, rather than inserting one column at a time in a
+    loop -- avoids pandas' "highly fragmented DataFrame" performance
+    warning, which shows up here since some of these columns (e.g.
+    work_position, diagnosed_conditions) produce many distinct flags.
     """
     df = df.copy()
     for col in columns:
@@ -168,15 +214,17 @@ def split_multiselect(df: pd.DataFrame, columns: list, delimiter: str = "|") -> 
         for cell in df[col].dropna():
             all_values.update(v.strip() for v in str(cell).split(delimiter))
 
+        new_columns = {}
         for value in sorted(all_values):
             flag_col = f"{col}__{_slugify(value)}"
-            df[flag_col] = df[col].apply(
+            new_columns[flag_col] = df[col].apply(
                 lambda cell, v=value: int(
                     isinstance(cell, str) and v in [x.strip() for x in cell.split(delimiter)]
                 )
             )
 
         df = df.drop(columns=[col])
+        df = pd.concat([df, pd.DataFrame(new_columns, index=df.index)], axis=1)
     return df
 
 
@@ -212,6 +260,8 @@ def _slugify(value: str) -> str:
         .replace(",", "")
         .replace("/", "_")
         .replace("-", "_")
+        .replace("'", "")
+        .replace("’", "")  # curly apostrophe variant, just in case
     )
 
 
@@ -219,14 +269,28 @@ def encode_special_flags(df: pd.DataFrame) -> pd.DataFrame:
     """
     One-hot encode any auto-generated '_special' columns created by
     extract_special_na_flags (e.g. medical_leave_request_special holding
-    "I don't know"). Runs alongside encode_nominal near the end of the
-    pipeline, after the original columns have already been ordinal/binary
-    encoded.
+    "I don't know"). Builds clean, slugified column names (reusing the
+    same _slugify helper as split_multiselect) instead of relying on
+    pd.get_dummies' default naming, which would otherwise embed the raw
+    category text -- including special characters like apostrophes,
+    slashes, and parentheses -- directly into the column name.
     """
+    df = df.copy()
     special_cols = [c for c in df.columns if c.endswith("_special")]
     if not special_cols:
         return df
-    return pd.get_dummies(df, columns=special_cols, prefix=special_cols, dummy_na=False)
+
+    for col in special_cols:
+        distinct_values = df[col].dropna().unique()
+        new_columns = {}
+        for value in distinct_values:
+            flag_col = f"{col}_{_slugify(str(value))}"
+            new_columns[flag_col] = (df[col] == value).astype(int)
+
+        df = df.drop(columns=[col])
+        df = pd.concat([df, pd.DataFrame(new_columns, index=df.index)], axis=1)
+
+    return df
 
 
 def run_pipeline(df: pd.DataFrame, config) -> pd.DataFrame:
@@ -237,6 +301,7 @@ def run_pipeline(df: pd.DataFrame, config) -> pd.DataFrame:
     direction/basis splits -> ordinal encode -> binary encode ->
     nominal one-hot encode -> special-flag one-hot encode.
     """
+    df = normalize_raw_column_names(df)
     df = rename_columns(df, config.COLUMN_RENAME_MAP)
     df = drop_columns(df, config.DROP_COLUMNS)
 

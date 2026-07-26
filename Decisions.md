@@ -70,3 +70,9 @@
   the clustering algorithm itself, but will need to be accounted for explicitly when 
   interpreting cluster centroids/profiles later, since a "high" value doesn't consistently 
   mean the same thing (more stigma vs. less stigma) across features
+
+  - works_remotely is ordinal by frequency (Never < Sometimes < Always), but unlike the 
+  stigma/comfort/awareness-type ordinal columns, it has no inherent "favorable" direction 
+  to align to -- it's a work-arrangement context variable, not an attitude or outcome 
+  measure. Left in its natural Never->Always order rather than forced into the 
+  favorable=low convention used elsewhere.
