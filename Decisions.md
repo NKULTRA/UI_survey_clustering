@@ -76,3 +76,35 @@
   to align to -- it's a work-arrangement context variable, not an attitude or outcome 
   measure. Left in its natural Never->Always order rather than forced into the 
   favorable=low convention used elsewhere.
+
+  - diagnosed_conditions/believed_conditions/diagnosed_conditions_professional were canonicalized 
+  before multi-select splitting: each pipe-separated raw value was mapped to one of ~16 
+  canonical condition categories, consolidating spelling/casing variants (e.g. "Autism", 
+  "autism spectrum disorder", "Asperger's" -> Autism) and folding historical/informal 
+  terminology (e.g. "MCD" -> Attention Deficit Hyperactivity Disorder, since MCD is the old 
+  clinical term for ADHD). Genuine free-text write-ins and one-off sarcastic/explanatory 
+  sentences that didn't correspond to a checklist category were routed to a residual "Other" 
+  bucket rather than each becoming their own column (only 2 respondents ended up in "Other", 
+  confirming the mapping captured nearly all actual responses)
+
+- PDD-NOS was merged into Autism, and Schizotypal Personality Disorder was merged into 
+  Personality Disorder, since both are clinically considered subtypes/related conditions of 
+  the broader category rather than fully distinct diagnoses, and keeping them separate would 
+  have created near-empty categories
+
+- "Sexual addiction", "Substance Use Disorder", and "Addictive Disorder" were consolidated into 
+  a single Addictive Disorder category, treating substance and behavioral addiction as one 
+  broader category for this analysis rather than preserving a fine-grained clinical distinction
+
+- Burn out was deliberately kept as its own separate canonical category rather than merged into 
+  Mood Disorder or Adjustment Disorder, despite very low frequency (n=1). The WHO's ICD-11 
+  classifies burnout as an occupational phenomenon (chronic unmanaged workplace stress) 
+  distinct from a mental health diagnosis, and given this survey's specific focus on mental 
+  health in tech workplaces, it was judged conceptually important enough to preserve as its 
+  own label even if it doesn't survive later variance thresholding
+
+- Low-frequency canonical condition categories (e.g. Burn out n=1, Sleeping Disorder n=1, 
+  Gender Dysphoria n=2) were deliberately NOT manually merged into a catch-all bucket at this 
+  stage. This is intentionally left for the upcoming formal feature selection step (variance 
+  thresholding), so that removal of near-zero-variance features follows a documented, 
+  principled threshold rather than an ad-hoc frequency cutoff decided by eye

@@ -11,6 +11,19 @@ import pandas as pd
 import numpy as np
 
 
+def bucket_top_n_categories(df: pd.DataFrame, col: str, top_categories: list, other_label: str = "Other") -> pd.DataFrame:
+    """
+    Collapse a high-cardinality categorical column down to its top N
+    categories (given explicitly as top_categories) plus a residual
+    other_label for everything else. Useful for columns like country_live
+    where the raw data has a long tail of near-single-count categories
+    that would otherwise explode one-hot dimensionality.
+    """
+    df = df.copy()
+    df[col] = df[col].where(df[col].isin(top_categories), other=other_label)
+    return df
+
+
 def normalize_raw_column_names(df: pd.DataFrame) -> pd.DataFrame:
     """
     Normalize raw column headers before renaming: replace non-breaking
@@ -193,6 +206,41 @@ def encode_binary(df: pd.DataFrame, binary_map: dict) -> pd.DataFrame:
     return df
 
 
+def canonicalize_multiselect_values(df: pd.DataFrame, canonicalization_map: dict,
+                                     delimiter: str = "|", other_label: str = "Other") -> pd.DataFrame:
+    """
+    For each configured column, splits each cell on delimiter and maps
+    every individual item (case-insensitively) to its canonical label
+    via canonicalization_map[col]. Items mapped to "" (explicitly routed
+    to the residual bucket) or not found in the map at all fall back to
+    other_label. Deduplicates canonical items within a cell and rejoins
+    with delimiter, so split_multiselect can operate on clean, consolidated
+    categories afterward instead of raw free-text/spelling variants.
+
+    Must run BEFORE split_multiselect in the pipeline.
+    """
+    df = df.copy()
+    for col, value_map in canonicalization_map.items():
+        if col not in df.columns:
+            continue
+
+        def canonicalize_cell(cell):
+            if not isinstance(cell, str):
+                return cell
+            items = [v.strip() for v in cell.split(delimiter)]
+            canonical_items = []
+            for item in items:
+                canonical = value_map.get(item.lower())
+                if not canonical:  # None (unmapped) or "" (explicitly routed to Other)
+                    canonical = other_label
+                if canonical not in canonical_items:
+                    canonical_items.append(canonical)
+            return delimiter.join(canonical_items) if canonical_items else np.nan
+
+        df[col] = df[col].apply(canonicalize_cell)
+    return df
+
+
 def split_multiselect(df: pd.DataFrame, columns: list, delimiter: str = "|") -> pd.DataFrame:
     """
     Turn a pipe-separated multi-select column into one binary flag
@@ -315,6 +363,9 @@ def run_pipeline(df: pd.DataFrame, config) -> pd.DataFrame:
 
     df = clean_gender(df, **config.GENDER_CLEANING)
 
+    df = bucket_top_n_categories(df, **config.COUNTRY_BUCKETING)
+
+    df = canonicalize_multiselect_values(df, config.MULTISELECT_CANONICALIZATION)
     df = split_multiselect(df, config.MULTISELECT_COLUMNS)
     df = extract_text_keyword_features(df, config.TEXT_COLUMNS)
     df = apply_direction_basis_columns(df, config.DIRECTION_BASIS_COLUMNS)
