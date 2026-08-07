@@ -168,3 +168,22 @@
   pairs plausibly capture overlapping information (e.g. similarly-worded questions like 
   comfortable_discussing_with_coworkers vs. comfortable_discussing_with_supervisor), rather 
   than an exhaustive blind sweep.
+
+  - Mutual Information (MI): same bivariate/pairwise structure as ANOVA and chi-square -- no 
+  version tests one feature against all others simultaneously. Unlike chi-square, the book 
+  EXPLICITLY confirms the unsupervised-redundancy interpretation directly: "In unsupervised 
+  learning, it is often the features that have a low MI value among themselves contribute the 
+  most information" -- i.e. LOW MI between two features = independent/complementary = keep 
+  both; HIGH MI = overlapping information = likely redundant, consider dropping one. Same 
+  redundancy direction as ANOVA conceptually, despite using a different underlying statistic.
+
+- MI is more computationally expensive than ANOVA/chi-square (involves density estimation), 
+  and its main advantage per the book is capturing NONLINEAR relationships that the other two 
+  can miss. Given the cost, MI was applied to the same small, deliberately chosen set of 
+  feature pairs already selected for chi-square testing, rather than a separate/exhaustive 
+  pairwise sweep -- avoiding both the multiple-comparisons problem and unnecessary runtime cost.
+
+- Note: sklearn's mutual_info_classif/mutual_info_regression are built for feature-vs-LABEL use 
+  (via the SelectKBest API, as in the book's Iris example) -- for pure feature-vs-feature MI 
+  with no label, mutual_info_score or applying mutual_info_regression pairwise between two 
+  columns directly is the correct approach instead, not the SelectKBest-style call.
