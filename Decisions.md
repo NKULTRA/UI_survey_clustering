@@ -133,3 +133,38 @@
   ordered scale would have required deciding which of two very different non-disclosure reasons 
   counts as "more/less" favorable than "sometimes discloses" -- an unjustified ordering the two-
   dimension split avoids
+
+  - ANOVA was initially considered for pre-clustering feature selection, but on closer reading, its 
+  natural fit is testing a CONTINUOUS feature against a CATEGORICAL grouping (or another 
+  continuous feature, for redundancy checks) -- not something meaningfully applicable across 
+  most of this dataset, since nearly all features are ordinal/categorical rather than continuous 
+  (age being the one clear exception). Chi-square (categorical vs. categorical) is the more 
+  appropriate filter method for the bulk of the feature set instead.
+  
+  ANOVA's actual value for this project was identified as POST-HOC cluster validation rather than 
+  pre-clustering feature selection: using the final cluster assignment as the categorical grouping 
+  variable and testing whether age differs significantly across clusters (e.g. "Cluster 3 skews 
+  significantly younger, p < 0.01") gives a statistically defensible backing for cluster 
+  interpretation, rather than relying on descriptive statistics alone. This will be applied in 
+  the cluster-interpretation stage, not the feature-selection stage.
+
+  - Chi-square, like ANOVA, is inherently a PAIRWISE test (one categorical feature vs. another, 
+  or vs. a label) -- there is no version that evaluates one feature against all others 
+  simultaneously. For unsupervised redundancy-checking, the interpretation direction is 
+  OPPOSITE to ANOVA's: chi-square's null hypothesis is independence, so a LOW p-value 
+  (independence rejected -> features are significantly associated) suggests possible 
+  redundancy, while a HIGH p-value (independence not rejected) suggests the two features 
+  carry distinct information and both should be kept. (Note: the course book does not 
+  explicitly state this unsupervised-redundancy framing for chi-square the way it does for 
+  ANOVA -- this is my own extension by analogy, not a direct textbook claim.)
+
+- Decided against exhaustively testing all pairwise combinations of ordinal/categorical 
+  features (~130+ columns would mean 8,000+ pairwise tests). Two reasons: (1) many resulting 
+  significant pairs would be statistically real but substantively uninterpretable/not useful 
+  for the analysis, and (2) the multiple-comparisons problem -- at alpha=0.05, roughly 5% of 
+  8,000+ tests (400+) would show "significant" results by pure chance alone, even with no real 
+  underlying relationship, without correction (e.g. Bonferroni). Instead, a small, deliberately 
+  chosen set of feature pairs was selected for testing, based on domain reasoning about which 
+  pairs plausibly capture overlapping information (e.g. similarly-worded questions like 
+  comfortable_discussing_with_coworkers vs. comfortable_discussing_with_supervisor), rather 
+  than an exhaustive blind sweep.
