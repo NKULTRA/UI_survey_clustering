@@ -187,3 +187,17 @@
   (via the SelectKBest API, as in the book's Iris example) -- for pure feature-vs-feature MI 
   with no label, mutual_info_score or applying mutual_info_regression pairwise between two 
   columns directly is the correct approach instead, not the SelectKBest-style call.
+
+  - Feature variance thresholding: the book's example (threshold=0.6 on the Iris dataset) doesn't 
+  transfer to this dataset without adjustment, because raw variance is SCALE-DEPENDENT (measured 
+  in squared units of whatever scale a feature happens to use). This dataset mixes binary (0/1, 
+  variance mathematically capped at 0.25), ordinal (0-2/0-3/0-4 coded, similarly bounded), and 
+  one continuous unscaled feature (age, variance likely in the hundreds) -- a single flat 
+  threshold like 0.6 would eliminate every binary column outright regardless of information 
+  content, while age would never be flagged regardless of its actual usefulness. Variance 
+  thresholding was therefore applied separately per feature-type group, with a threshold 
+  reasoned specifically for that group's natural scale, rather than one borrowed global number
+
+- Variance thresholding must run BEFORE any standardization/scaling step, not after -- since 
+  after StandardScaler, every feature has variance exactly 1 by construction, which would make 
+  a variance-based filter meaningless
