@@ -341,21 +341,26 @@ def encode_special_flags(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def run_pipeline(df: pd.DataFrame, config) -> pd.DataFrame:
+def prepare_for_feature_selection(df: pd.DataFrame, config) -> pd.DataFrame:
     """
-    Apply all preprocessing steps in a sensible order:
-    rename -> drop -> extract special-NA flags -> age cleaning/bucketing ->
-    gender cleaning -> multiselect split -> text keyword extraction ->
-    direction/basis splits -> ordinal encode -> binary encode ->
-    nominal one-hot encode -> special-flag one-hot encode.
+    Runs every preprocessing step EXCEPT one-hot encoding (encode_nominal,
+    encode_special_flags). Ordinal and binary encoding are safe to include
+    here -- they convert values to numbers but keep the same column names.
+    encode_nominal/encode_special_flags are excluded because they REPLACE
+    a single column with several new ones, which would break any downstream
+    step (like chi-square testing) that expects to find a column by its
+    original name.
+
+    Use this to get a DataFrame suitable for feature-selection diagnostics
+    (e.g. apply_chi_square from feature_selection.py) that reference
+    column names directly, before those names disappear into one-hot
+    columns. This is NOT the final model-ready feature matrix -- call
+    run_pipeline for that.
     """
     df = normalize_raw_column_names(df)
     df = rename_columns(df, config.COLUMN_RENAME_MAP)
     df = drop_columns(df, config.DROP_COLUMNS)
 
-    # Must run BEFORE ordinal/binary encoding, so special values (e.g.
-    # "I don't know", "Not applicable to me") are captured into their own
-    # flag columns before the original column's non-mapped values become NaN.
     df = extract_special_na_flags(df, config.SPECIAL_NA_AS_CATEGORY)
 
     df = clean_age(df, **config.AGE_CLEANING)
@@ -372,6 +377,23 @@ def run_pipeline(df: pd.DataFrame, config) -> pd.DataFrame:
 
     df = encode_ordinal(df, config.ORDINAL_COLUMNS)
     df = encode_binary(df, config.BINARY_COLUMNS)
+    return df
+
+
+def run_pipeline(df: pd.DataFrame, config) -> pd.DataFrame:
+    """
+    Full pipeline, producing the final model-ready feature matrix:
+    everything from prepare_for_feature_selection, plus one-hot encoding
+    (nominal columns and special-NA flag columns).
+
+    Feature selection diagnostics (chi-square, ANOVA, MI, variance
+    thresholding) are NOT run here -- call them separately in the notebook
+    on the output of prepare_for_feature_selection instead, and use their
+    results to decide which columns to pass into run_pipeline's
+    NOMINAL_COLUMNS / final feature set, rather than baking a fixed
+    selection step into this function.
+    """
+    df = prepare_for_feature_selection(df, config)
     df = encode_nominal(df, config.NOMINAL_COLUMNS)
     df = encode_special_flags(df)
     return df
