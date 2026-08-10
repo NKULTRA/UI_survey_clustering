@@ -309,6 +309,9 @@ ORDINAL_COLUMNS = {
     'negative_impact_reveal': ['No', "I'm not sure", 'Yes'],
     'negative_impact_reveal_coworker': ['No', "I'm not sure", 'Yes'],
     'productivity_affected': ['No', 'Unsure', 'Yes'],
+    'career_impact_mental_health_direction': ['No', 'Maybe', 'Yes'],
+    'team_view_mental_health_direction': ['No', 'Maybe', 'Yes'],
+    'unsupportive_response_mental_health_direction': ['No', 'Maybe', 'Yes'],
 
     # Produced by DIRECTION_BASIS_COLUMNS split -- frequency dimension, ordinal
     'reveal_to_coworkers_direction': ['Always', 'Sometimes', 'Never'], 
@@ -325,6 +328,9 @@ NOMINAL_COLUMNS = [
     "country_live", 
     "reveal_to_coworkers_basis",
     "reveal_to_clients_basis",
+    "career_impact_mental_health_basis",
+    "team_view_mental_health_basis",
+    "unsupportive_response_mental_health_basis",
 ]
 
 # ---------------------------------------------------------------------------

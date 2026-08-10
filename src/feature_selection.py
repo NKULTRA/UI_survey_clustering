@@ -3,6 +3,8 @@ import numpy as np
 import seaborn as sns
 from scipy import stats
 from scipy.stats import chi2_contingency
+from sklearn.metrics import mutual_info_score
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.feature_selection import (
     mutual_info_classif, VarianceThreshold, SelectKBest
 )
@@ -20,38 +22,39 @@ def apply_chi_square(df, FEATURE_FILTER_GROUPS):
     return results
 
 
+# Mutual Information for feature selection
 def apply_mutual_information(df, FEATURE_FILTER_GROUPS):
-    pass
+    results = {}
+
+    for col_a, col_b in FEATURE_FILTER_GROUPS:
+        paired = df[[col_a, col_b]].dropna()
+        mi_score = mutual_info_score(paired[col_a], paired[col_b])
+        results[(col_a, col_b)] = mi_score
+
+    return results
 
 
-def apply_variance_threshold():
-    # 2. Reformulate the threshold in terms of a real-world quantity, 
-    # then back-calculate the variance (strongest justification). 
-    # For binary features specifically, variance = p(1-p), so instead of picking a 
-    # variance number directly, pick a minimum meaningful group size — something you can 
-    # actually defend in plain English. For example: "a condition flag reported 
-    # by fewer than ~1% of respondents (≈14 people out of 1433) is too rare to plausibly define 
-    # a distinguishable cluster segment." That gives p ≈ 0.01, which converts to variance ≈ 0.0099 — a 
-    # concrete, justified cutoff, derived from a practical/statistical reasoning about cluster formation, 
-    # not picked because it "looked about right." This is directly usable for your condition flags, 
-    # mental_health_benefits dummies, etc.
+# Variance Threshold for feature selection
+def apply_variance_threshold(df, threshold=0.0099):
+    df_model_input = df.drop(columns=["age_group"], errors="ignore")
+    # errors="ignore" so this doesn't crash if age_group isn't present
+    # (e.g. if called on a df that hasn't gone through bucket_age)
 
-    # 3. For ordinal columns, a comparable trick: reason about the modal category's share 
-    # instead of raw variance. If 97% of respondents gave the identical answer 
-    # on some ordinal question, that feature can't meaningfully separate clusters 
-    # no matter what its raw variance number says — so a cutoff like "exclude if 
-    # the single most common answer accounts for more than X% of responses" is scale-independent 
-    # (always 0-1, comparable across binary/ordinal/nominal alike) and much easier to justify 
-    # in one sentence than an abstract variance number.
+    df_filled = df_model_input.fillna(0)  # TEMPORARY placeholder
 
-    #The honest bigger picture: there's no threshold that's objectively "correct" — that's 
-    # inherent to every filter method, not a flaw specific to your reasoning. What makes a threshold 
-    # defensible isn't that it's non-arbitrary (nothing here truly is), it's that you can (a) state 
-    # the practical/statistical reasoning behind it in one sentence, (b) apply it consistently within 
-    # a feature-type group, and (c) sanity-check what actually got dropped and confirm it makes sense. 
-    # That's precisely the "critically assess your decisions" instruction from the case study guidelines — 
-    # the threshold doesn't need to be optimal, it needs to be argued.
-    pass
+    X_minmax = MinMaxScaler().fit_transform(df_filled)
+
+    selector = VarianceThreshold(threshold=threshold)
+    selector.fit(X_minmax)
+
+    results = pd.DataFrame({
+        'feature': df_model_input.columns,
+        'variance': selector.variances_,
+        'kept': selector.get_support(),
+    }).sort_values('variance')
+
+    return results
+
 
 
 def apply_correlation_filter():

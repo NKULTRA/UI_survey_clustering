@@ -120,6 +120,7 @@ def clean_gender(df: pd.DataFrame, col: str = "gender", new_col: str = "gender_c
     mapped = normalized.map(mapping)
 
     df[new_col] = mapped.fillna(other_label)
+    df = df.drop(columns=[col])
     return df
 
 
