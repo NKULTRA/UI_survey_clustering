@@ -456,7 +456,6 @@ TEXT_COLUMNS = {
 SPECIAL_NA_AS_CATEGORY = {
     "*": [
         "N/A (not currently aware)",
-        "Not eligible for coverage / N/A",
         "Not applicable to me",
         "Not applicable to me (I do not have a mental illness)",
     ],

@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-import seaborn as sns
 from scipy import stats
 from scipy.stats import chi2_contingency
 from sklearn.metrics import mutual_info_score
@@ -56,10 +55,23 @@ def apply_variance_threshold(df, threshold=0.0099):
     return results
 
 
+def apply_correlation_filter(df, threshold=0.9):
+    df_model_input = df.drop(columns=["age_group"], errors="ignore")
+    corr_matrix = df_model_input.corr(method='spearman')
 
-def apply_correlation_filter():
+    # Only the upper triangle, excluding the diagonal, so each pair
+    # appears once (the matrix is symmetric, and the diagonal is
+    # always 1.0 self-correlation, not a real relationship)
+    upper_triangle = corr_matrix.where(
+        np.triu(np.ones(corr_matrix.shape), k=1).astype(bool)
+    )
 
-    # for the report itself it probably also makes sense to include a correlation matrix heatmap of the features, 
-    # so you can visually show which features are highly correlated and justify dropping one of them.
+    high_corr_pairs = (
+        upper_triangle.stack()
+        .reset_index()
+        .rename(columns={"level_0": "feature_a", "level_1": "feature_b", 0: "correlation"})
+    )
+    high_corr_pairs = high_corr_pairs[high_corr_pairs["correlation"].abs() > threshold]
+    high_corr_pairs = high_corr_pairs.sort_values("correlation", key=abs, ascending=False)
 
-    pass
+    return corr_matrix, high_corr_pairs
