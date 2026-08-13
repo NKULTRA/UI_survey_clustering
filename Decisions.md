@@ -201,3 +201,13 @@
 - Variance thresholding must run BEFORE any standardization/scaling step, not after -- since 
   after StandardScaler, every feature has variance exactly 1 by construction, which would make 
   a variance-based filter meaningless
+
+- Free-text keyword themes were derived empirically from the actual response data (word 
+frequency analysis + manual review), not guessed from a handful of examples, and verified 
+for coverage (~67-70% of responses match at least one theme; unmatched responses are mostly 
+single-word non-answers or highly idiosyncratic personal narratives). The same theme 
+taxonomy was used for both reason_not_willing_physical_health and 
+reason_not_willing_mental_health to allow direct comparison: discrimination_stigma is by far 
+the dominant theme for the mental health version (296 matches) versus a more even split 
+favoring job_relevance_impact for the physical health version (250 vs. 189/147 for fear and 
+stigma respectively) 

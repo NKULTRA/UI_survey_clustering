@@ -440,12 +440,31 @@ DIRECTION_BASIS_COLUMNS = {
 TEXT_COLUMNS = {
     "reason_not_willing_physical_health": {
         "keywords": {
-            "fear": ["afraid", "fear"],
+            "job_relevance_impact": ["relevan", "irrelevan", "relavent", "depend", "affect", "impact", "bearing on", "matter", "get in the way"],
+            "fear_hiring_risk": ["afraid", "fear", "scared", "nervous", "risk", "chances", "wouldn't hire", "not hire", "hurt my", "kill my", "lower my", "less likely to get", "reject", "get the job", "get a job"],
+            "discrimination_stigma": ["discriminat", "stigma", "prejudice", "bias", "judg", "negativ", "less attractive", "disadvantage", "taboo"],
+            "privacy_personal": ["private", "personal", "none of", "business", "confidential"],
+            "honesty_trust": ["honest", "upfront", "trust", "fair", "transparent", "hide", "disclos", "open"],
+            "accommodation_disability": ["accommodat", "disabilit", "equipment", "assistive", "protected"],
+            "timing_later": ["later", "after i", "after being hired", "offer stage", "wait", "once hired", "down the road"],
+            "not_applicable": ["don't have", "doesn't have any", "never come up", "not applicable", "n/a", "no reason", "nothing to", "never had"],
+            "productivity_performance": ["productiv", "perform"],
+            "embarrassment_shame": ["embarrass", "ashamed", "shame"],
         }
     },
     "reason_not_willing_mental_health": {
         "keywords": {
-            "stigma": ["stigma"],
+            "job_relevance_impact": ["relevan", "irrelevan", "relavent", "depend", "affect", "impact", "bearing on", "matter", "get in the way"],
+            "fear_hiring_risk": ["afraid", "fear", "scared", "nervous", "risk", "chances", "wouldn't hire", "not hire", "hurt my", "kill my", "lower my", "less likely to get", "reject", "get the job", "get a job", "worried"],
+            "discrimination_stigma": ["discriminat", "stigma", "prejudice", "bias", "judg", "negativ", "less attractive", "disadvantage", "taboo", "weakness", "weak", "frowned upon", "unstable", "instability"],
+            "privacy_personal": ["private", "personal", "none of", "business", "confidential"],
+            "honesty_trust": ["honest", "upfront", "trust", "fair", "transparent", "hide", "disclos", "open"],
+            "accommodation_disability": ["accommodat", "disabilit", "equipment", "assistive", "protected"],
+            "timing_later": ["later", "after i", "after being hired", "offer stage", "wait", "once hired", "down the road"],
+            "not_applicable": ["don't have", "doesn't have any", "never come up", "not applicable", "n/a", "no reason", "nothing to", "never had"],
+            "productivity_performance": ["productiv", "perform"],
+            "embarrassment_shame": ["embarrass", "ashamed", "shame"],
+            "understanding_support": ["understand", "support", "empath", "compassion"],
         }
     },
 }
@@ -459,6 +478,7 @@ SPECIAL_NA_AS_CATEGORY = {
         "Not applicable to me",
         "Not applicable to me (I do not have a mental illness)",
     ],
+    "medical_leave_request": ["I don't know"],
     "formal_mental_health_discussion": ["I don't know"],
     "anonymity_protected": ["I don't know"],
     "employer_takes_mental_health_seriously": ["I don't know"],
