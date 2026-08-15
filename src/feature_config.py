@@ -541,3 +541,30 @@ FEATURE_FILTER_GROUPS = [
     ("family_history_mental_illness", "current_mental_health_disorder"),
     ("past_mental_health_disorder", "current_mental_health_disorder")
 ]
+
+# ---------------------------------------------------------------------------
+# 10) Imputation groups
+# ---------------------------------------------------------------------------
+
+STRUCTURAL_MISSINGNESS = [
+    {
+        "gate_col": "self_employed",
+        "gate_value": 0,  # NOT self-employed -> asked about employer-provided stuff
+        "gated_columns": [
+            "tech_company", "tech_role", "mental_health_benefits",
+            "awareness_mental_health_care", "formal_mental_health_discussion",
+            "mental_health_resources", "anonymity_protected", "medical_leave_request",
+            "negative_consequences_discussion", "negative_consequences_physical_health",
+            "comfortable_discussing_with_coworkers", "comfortable_discussing_with_supervisor",
+            "employer_takes_mental_health_seriously", "negative_consequences_open_about_mental_health",
+            "negative_impact_reveal", 
+        ],
+    },
+    {
+        "gate_col": "self_employed",
+        "gate_value": 1,  # self-employed -> asked about personal coverage instead
+        "gated_columns": [
+            "medical_coverage", "awareness_resources",
+        ],
+    },
+]

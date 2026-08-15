@@ -342,6 +342,30 @@ def encode_special_flags(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def impute_structural_missingness(df, structural_config, verbose=True):
+    df = df.copy()
+    for cfg in structural_config:
+        gate_col = cfg["gate_col"]
+        gate_value = cfg["gate_value"]
+        for gated_col in cfg["gated_columns"]:
+            if gated_col not in df.columns:
+                continue
+
+            expected_na = df[gate_col] == gate_value
+            actual_na = df[gated_col].isna()
+
+            mismatch = expected_na & ~actual_na
+            if verbose and mismatch.sum() > 0:
+                print(f"{gated_col}: {mismatch.sum()} rows answered despite "
+                      f"{gate_col}=={gate_value}")
+
+            df[f"{gated_col}_not_applicable"] = actual_na.astype(int)
+            fill_value = df[gated_col].dropna().mean()
+            df[gated_col] = df[gated_col].fillna(fill_value)
+
+    return df
+
+
 def prepare_for_feature_selection(df: pd.DataFrame, config) -> pd.DataFrame:
     """
     Runs every preprocessing step EXCEPT one-hot encoding (encode_nominal,
