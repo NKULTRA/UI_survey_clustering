@@ -396,3 +396,22 @@ mathematically derived from the same gate condition by construction, not an inde
 finding. Dropped all ~15 self_employed-gated _not_applicable flags, keeping self_employed 
 itself as the single, sufficient representation of this information -- unlike the chi-square 
 candidate pairs, this is guaranteed redundancy rather than a judgment call.
+
+- Three parallel condition-flag families exist: diagnosed_conditions__X (general self-report), 
+  diagnosed_conditions_professional__X (professionally validated diagnosis), and 
+  believed_conditions__X (self-suspected, unconfirmed condition). Correlation analysis showed 
+  diagnosed_conditions__X and diagnosed_conditions_professional__X are strongly correlated 
+  across most conditions (r=0.72-0.80), while believed_conditions__X showed no comparable 
+  correlation with either -- consistent with it capturing a genuinely distinct population 
+  (people uncertain about a condition, rather than reporting a confirmed one). 
+  diagnosed_conditions__X was dropped in favor of diagnosed_conditions_professional__X for 
+  each correlated condition pair, since the professionally validated diagnosis is the more 
+  reliable source; believed_conditions__X was retained in full, as it measures a substantively 
+  different construct rather than duplicating the diagnosed-condition information.
+
+- diagnosed_by_professional, sought_treatment, and past_mental_health_disorder correlate 
+moderately-strongly (r=0.73-0.77) but represent genuinely distinct life events (seeking 
+help vs. formal diagnosis vs. self-assessed past condition), not restatements of one fact. 
+Contingency-table checks showed 74-86% concordance -- consistent with the concordance range 
+already established as "meaningful, not redundant" for other kept pairs (e.g. past/current_
+mental_health_disorder at 73%) -- so all three were kept rather than consolidated.
