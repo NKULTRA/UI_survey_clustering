@@ -96,7 +96,9 @@ def bucket_age(df: pd.DataFrame, col: str = "age", new_col: str = "age_group") -
     """
     Create a human-readable age_group column for cluster interpretation,
     while the cleaned numeric age column remains available for the
-    actual clustering/distance calculations.
+    actual clustering/distance calculations. age_group is PROFILING-ONLY --
+    always excluded from the final model matrix (see fill_remaining_with_mean's
+    exclude_cols usage, and drop it explicitly before scaling/clustering).
     """
     df = df.copy()
     bins = [0, 24, 34, 44, 54, 100]
@@ -111,7 +113,10 @@ def clean_gender(df: pd.DataFrame, col: str = "gender", new_col: str = "gender_c
     Normalize free-text gender responses: lowercase/strip, map common
     synonyms to a small set of labels, and fold unmatched low-frequency
     responses into `other_label`. synonym_map keys must already be
-    lowercase/stripped.
+    lowercase/stripped. Drops the original raw column afterward, since
+    it's superseded by new_col -- do NOT also add `col` to DROP_COLUMNS
+    in the config, since DROP_COLUMNS runs earlier in the pipeline than
+    this function and would remove the column before it can be read here.
     """
     df = df.copy()
     normalized = df[col].astype(str).str.strip().str.lower()
@@ -342,11 +347,49 @@ def encode_special_flags(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def impute_structural_missingness(df, structural_config, verbose=True):
+def impute_structural_missingness(df: pd.DataFrame, structural_config: list, verbose: bool = True) -> pd.DataFrame:
+    """
+    For each {gate_col, gate_value, gated_columns} entry in structural_config,
+    handles columns whose missingness is explained by survey skip-logic
+    (e.g. previous_employers_* questions only asked if previous_employers==1).
+
+    For each gated_col:
+      1. If cfg.get("create_flag", True) is True, creates a
+         '{gated_col}_not_applicable' flag (1 = was actually NaN) --
+         preserves the TRUE reason for missingness. Set create_flag=False
+         for a group when its flags would be a near-perfect duplicate of
+         gate_col itself (mathematically guaranteed when the gate is clean
+         -- e.g. every self_employed-gated column's flag is just
+         self_employed reproduced under a new name; verified via
+         apply_correlation_filter showing r=+-1.0). In that case gate_col
+         already carries the information -- no separate flag is needed.
+      2. Fills the original column with its own mean (of valid, non-NaN
+         values) -- a NEUTRAL value chosen specifically because the
+         downstream model is K-means (distance-based): a fabricated
+         out-of-range value (e.g. max+1) would distort Euclidean distance
+         calculations by implying "more than Yes", whereas the mean places
+         a "not applicable" respondent at the center of the existing
+         distribution, adding no false directional signal.
+
+    verbose=True prints, per gated_col, how many rows contradict the gate
+    assumption (i.e. answered the gated question despite gate_col ==
+    gate_value) -- real survey data is rarely perfectly clean skip-logic;
+    a SMALL mismatch count is expected and not a sign the gate is wrong.
+    A large mismatch count (e.g. close to the whole non-gated group size)
+    usually means gate_value is backwards, not just noisy data -- see
+    DECISIONS.md for a case where this caught an inverted gate_value.
+
+    structural_config entries must specify their gate_value in whatever
+    ENCODED form the column has at the pipeline stage this function is
+    called at (e.g. ordinal-encoded int, not the original string) --
+    this is meant to run on run_pipeline()'s output (df_processed),
+    after ordinal/binary encoding.
+    """
     df = df.copy()
     for cfg in structural_config:
         gate_col = cfg["gate_col"]
         gate_value = cfg["gate_value"]
+        create_flag = cfg.get("create_flag", True)
         for gated_col in cfg["gated_columns"]:
             if gated_col not in df.columns:
                 continue
@@ -359,10 +402,45 @@ def impute_structural_missingness(df, structural_config, verbose=True):
                 print(f"{gated_col}: {mismatch.sum()} rows answered despite "
                       f"{gate_col}=={gate_value}")
 
-            df[f"{gated_col}_not_applicable"] = actual_na.astype(int)
+            if create_flag:
+                df[f"{gated_col}_not_applicable"] = actual_na.astype(int)
+
             fill_value = df[gated_col].dropna().mean()
             df[gated_col] = df[gated_col].fillna(fill_value)
 
+    return df
+
+
+def fill_remaining_with_mean(df: pd.DataFrame, exclude_cols: list = None) -> pd.DataFrame:
+    """
+    Plain mean-imputation for any column with remaining NaN after
+    impute_structural_missingness has already run. Covers two kinds of
+    leftover missingness:
+      - Values already captured elsewhere as their own category (e.g.
+        family_history_mental_illness's "I don't know" responses, already
+        preserved via extract_special_na_flags/encode_special_flags) --
+        the NaN remaining in the ORIGINAL column here is just a neutral
+        placeholder, since the real signal already lives in the _special
+        flag column.
+      - Genuine residual non-response with no confirmed structural
+        explanation (e.g. reveal_to_coworkers_direction, productivity_
+        affected -- a compound "diagnosed or treated" gate was tested and
+        only explained ~42-46% of the missingness, not enough to justify
+        a _not_applicable flag; treated as plain residual instead -- see
+        DECISIONS.md).
+
+    exclude_cols: columns to skip entirely, e.g. ["age_group"] -- a
+    profiling-only categorical column, never part of the model matrix,
+    so it doesn't need (and can't take, being Categorical dtype) a
+    numeric mean fill.
+    """
+    df = df.copy()
+    exclude_cols = exclude_cols or []
+    for col in df.columns:
+        if col in exclude_cols:
+            continue
+        if df[col].isnull().any():
+            df[col] = df[col].fillna(df[col].mean())
     return df
 
 
@@ -377,15 +455,20 @@ def prepare_for_feature_selection(df: pd.DataFrame, config) -> pd.DataFrame:
     original name.
 
     Use this to get a DataFrame suitable for feature-selection diagnostics
-    (e.g. apply_chi_square from feature_selection.py) that reference
-    column names directly, before those names disappear into one-hot
-    columns. This is NOT the final model-ready feature matrix -- call
-    run_pipeline for that.
+    (apply_chi_square, apply_mutual_information from feature_selection.py)
+    that reference column names directly, before those names disappear
+    into one-hot columns. This is NOT the final model-ready feature
+    matrix -- call run_pipeline for that. (apply_variance_threshold and
+    apply_correlation_filter, by contrast, need run_pipeline's fully
+    numeric output -- see feature_selection.py's module docstring.)
     """
     df = normalize_raw_column_names(df)
     df = rename_columns(df, config.COLUMN_RENAME_MAP)
     df = drop_columns(df, config.DROP_COLUMNS)
 
+    # Must run BEFORE ordinal/binary encoding, so special values (e.g.
+    # "I don't know", "Not applicable to me") are captured into their own
+    # flag columns before the original column's non-mapped values become NaN.
     df = extract_special_na_flags(df, config.SPECIAL_NA_AS_CATEGORY)
 
     df = clean_age(df, **config.AGE_CLEANING)
@@ -412,11 +495,17 @@ def run_pipeline(df: pd.DataFrame, config) -> pd.DataFrame:
     (nominal columns and special-NA flag columns).
 
     Feature selection diagnostics (chi-square, ANOVA, MI, variance
-    thresholding) are NOT run here -- call them separately in the notebook
-    on the output of prepare_for_feature_selection instead, and use their
-    results to decide which columns to pass into run_pipeline's
-    NOMINAL_COLUMNS / final feature set, rather than baking a fixed
-    selection step into this function.
+    thresholding) and imputation (impute_structural_missingness,
+    fill_remaining_with_mean) are NOT run here -- call them separately in
+    the notebook on the output of this function, so you can inspect
+    results and make explicit decisions at each step rather than having
+    them silently baked into one big pipeline call. Typical order after
+    calling this:
+        df_processed = run_pipeline(df, feature_config)
+        # feature-selection diagnostics + decisions ...
+        df_imputed = impute_structural_missingness(df_processed, STRUCTURAL_MISSINGNESS)
+        df_imputed = fill_remaining_with_mean(df_imputed, exclude_cols=["age_group"])
+        # then: drop age_group, scale, cluster
     """
     df = prepare_for_feature_selection(df, config)
     df = encode_nominal(df, config.NOMINAL_COLUMNS)

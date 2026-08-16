@@ -142,20 +142,6 @@ COUNTRY_BUCKETING = {
     "other_label": "Other",
 }
 
-"""
-Template for canonicalizing diagnosed_conditions / believed_conditions /
-diagnosed_conditions_professional before multi-select splitting.
-
-Fill in the "" on the right of each raw value with your chosen canonical
-category label (e.g. "Autism Spectrum", "ADHD", "Anxiety Disorder").
-Leave it as "" for any value you want routed to the residual "Other"
-bucket instead (e.g. one-off free-text write-ins, sarcastic asides).
-
-Use the SAME canonical label spelling across all three dicts for values
-that represent the same underlying condition, so they end up in the
-same final flag column regardless of which source column they came from.
-"""
-
 DIAGNOSED_CONDITIONS_MAP = {
     "add (w/o hyperactivity)": "Attention Deficit Hyperactivity Disorder",
     "addictive disorder": "Addictive Disorder",
@@ -176,7 +162,7 @@ DIAGNOSED_CONDITIONS_MAP = {
     "mood disorder (depression, bipolar disorder, etc)": "Mood Disorder",
     "obsessive-compulsive disorder": "Obsessive-Compulsive Disorder",
     "pdd-nos": "Autism",
-    "ptsd (undiagnosed)": "Post-traumatic Stress Disorder",  # even undiagnosed, the person suffers from a condition, might be depression
+    "ptsd (undiagnosed)": "Post-traumatic Stress Disorder",
     "personality disorder (borderline, antisocial, paranoid, etc)": "Personality Disorder",
     "pervasive developmental disorder (not otherwise specified)": "Autism",
     "post-traumatic stress disorder": "Post-traumatic Stress Disorder",
@@ -250,8 +236,8 @@ DIAGNOSED_CONDITIONS_PROFESSIONAL_MAP = {
     "substance use disorder": "Addictive Disorder",
     "suicidal ideation": "Mood Disorder",
     "attention deficit disorder (but not the hyperactive version)": "Attention Deficit Hyperactivity Disorder",
-    "autism spectrum disorder ": "Autism",  
-    "posttraumatic stress disourder": "Post-traumatic Stress Disorder", 
+    "autism spectrum disorder ": "Autism",
+    "posttraumatic stress disourder": "Post-traumatic Stress Disorder",
 }
 
 MULTISELECT_CANONICALIZATION = {
@@ -276,6 +262,11 @@ MULTISELECT_CANONICALIZATION = {
 #      self-reported health status (absent/uncertain/confirmed), not a
 #      stigma/comfort measure -- No/Maybe/Yes reflects degree of
 #      presence/certainty, not favorability.
+#
+#    IMPORTANT (see section 10): STRUCTURAL_MISSINGNESS's gate_value for
+#    reveal_to_clients_direction/reveal_to_coworkers_direction and for
+#    productivity_affected refers to the ENCODED integer position in
+#    these lists (0-indexed), not the original string.
 # ---------------------------------------------------------------------------
 ORDINAL_COLUMNS = {
     'awareness_resources': ['Yes, I know several', 'I know some', "No, I don't know any"],
@@ -288,12 +279,12 @@ ORDINAL_COLUMNS = {
     'previous_employers_negative_consequences_physical': ['None of them', 'Some of them', 'Yes, all of them'],
     'previous_employers_comfortable_discussing_coworkers': ['Yes, at all of my previous employers', 'Some of my previous employers', 'No, at none of my previous employers'],
     'previous_employers_comfortable_discussing_supervisor': ['Yes, at all of my previous employers', 'Some of my previous employers', 'No, at none of my previous employers'],
-    'previous_employers_mental_health_seriously': ['Yes, they all did', 'Some did', 'None did'],  
+    'previous_employers_mental_health_seriously': ['Yes, they all did', 'Some did', 'None did'],
     'previous_employers_negative_consequences_coworkers': ['None of them', 'Some of them', 'Yes, all of them'],
     'willingness_share_mental_illness': ['Very open', 'Somewhat open', 'Neutral', 'Somewhat not open', 'Not open at all'],
     'interferes_with_work_treated': ['Never', 'Rarely', 'Sometimes', 'Often'],
     'interferes_with_work_not_treated': ['Never', 'Rarely', 'Sometimes', 'Often'],
-    'works_remotely': ['Never', 'Sometimes', 'Always'],  
+    'works_remotely': ['Never', 'Sometimes', 'Always'],
     'percentage_affected': ['1-25%', '26-50%', '51-75%', '76-100%'],
     'negative_consequences_discussion': ['No', 'Maybe', 'Yes'],
     'negative_consequences_physical_health': ['No', 'Maybe', 'Yes'],
@@ -302,20 +293,20 @@ ORDINAL_COLUMNS = {
     'potential_employer_physical_health': ['Yes', 'Maybe', 'No'],
     'potential_employer_mental_health': ['Yes', 'Maybe', 'No'],
     'less_likely_reveal_mental_health': ['No', 'Maybe', 'Yes'],
-    'past_mental_health_disorder': ['No', 'Maybe', 'Yes'], 
-    'current_mental_health_disorder': ['No', 'Maybe', 'Yes'], 
+    'past_mental_health_disorder': ['No', 'Maybe', 'Yes'],
+    'current_mental_health_disorder': ['No', 'Maybe', 'Yes'],
     'previous_employers_mental_health_benefits': ['Yes, they all did', 'Some did', 'No, none did'],
     'awareness_mental_health_care': ['Yes', 'I am not sure', 'No'],
     'negative_impact_reveal': ['No', "I'm not sure", 'Yes'],
     'negative_impact_reveal_coworker': ['No', "I'm not sure", 'Yes'],
-    'productivity_affected': ['No', 'Unsure', 'Yes'],
+    'productivity_affected': ['No', 'Unsure', 'Yes'],  # No=0, Unsure=1, Yes=2
     'career_impact_mental_health_direction': ['No', 'Maybe', 'Yes'],
     'team_view_mental_health_direction': ['No', 'Maybe', 'Yes'],
     'unsupportive_response_mental_health_direction': ['No', 'Maybe', 'Yes'],
 
     # Produced by DIRECTION_BASIS_COLUMNS split -- frequency dimension, ordinal
-    'reveal_to_coworkers_direction': ['Always', 'Sometimes', 'Never'], 
-    'reveal_to_clients_direction': ['Always', 'Sometimes', 'Never'],
+    'reveal_to_coworkers_direction': ['Always', 'Sometimes', 'Never'],  # Always=0, Sometimes=1, Never=2
+    'reveal_to_clients_direction': ['Always', 'Sometimes', 'Never'],  # Always=0, Sometimes=1, Never=2
 }
 
 # ---------------------------------------------------------------------------
@@ -325,7 +316,7 @@ NOMINAL_COLUMNS = [
     "company_size",
     "mental_health_benefits",
     "gender_cleaned",
-    "country_live", 
+    "country_live",
     "reveal_to_coworkers_basis",
     "reveal_to_clients_basis",
     "career_impact_mental_health_basis",
@@ -496,7 +487,7 @@ SPECIAL_NA_AS_CATEGORY = {
 # 9) Pre-defined column groups for filter feature selection
 # ---------------------------------------------------------------------------
 FEATURE_FILTER_GROUPS = [
-    # negative_consequences 
+    # negative_consequences
     ("negative_consequences_discussion", "negative_consequences_physical_health"),
     ("negative_consequences_discussion", "negative_consequences_open_about_mental_health"),
     ("negative_consequences_physical_health", "negative_consequences_open_about_mental_health"),
@@ -539,17 +530,39 @@ FEATURE_FILTER_GROUPS = [
     # significant, don't treat "related" as grounds to drop one)
     ("family_history_mental_illness", "past_mental_health_disorder"),
     ("family_history_mental_illness", "current_mental_health_disorder"),
-    ("past_mental_health_disorder", "current_mental_health_disorder")
+    ("past_mental_health_disorder", "current_mental_health_disorder"),
 ]
 
 # ---------------------------------------------------------------------------
-# 10) Imputation groups
+# 10) Imputation groups -- structural missingness explained by survey
+#     skip-logic. gate_value refers to the ENCODED form of gate_col at the
+#     pipeline stage this is applied (run_pipeline's output, df_processed) --
+#     i.e. after ordinal/binary encoding, matching ORDINAL_COLUMNS' order
+#     above. Consumed by preprocessing.impute_structural_missingness.
+#
+#     FIX (previous version): negative_impact_reveal was listed under BOTH
+#     the self_employed==0 group and the reveal_to_clients_direction group.
+#     Since impute_structural_missingness fills NaN as it processes each
+#     entry in order, whichever group ran first would silently consume all
+#     the NaN, making the second entry a no-op AND attributing the flag to
+#     the wrong (untested) gate. Removed from the self_employed group --
+#     it doesn't structurally belong there at all; kept only under its
+#     confirmed gate (reveal_to_clients_direction == "Never").
+#
+#     FIX (previous version): percentage_affected's gate was backwards
+#     (checked productivity_affected == "Yes", i.e. gate_value=1, meaning
+#     the column would be missing WHEN answered -- opposite of the real
+#     skip-logic) and used the wrong encoded value (1 decodes to "Unsure",
+#     not "Yes", per ORDINAL_COLUMNS above). percentage_affected is only
+#     asked when productivity_affected == "Yes" (encoded 2) -- so it's
+#     missing for BOTH "No" (0) and "Unsure" (1). Split into two entries
+#     below to cover both.
 # ---------------------------------------------------------------------------
-
 STRUCTURAL_MISSINGNESS = [
     {
         "gate_col": "self_employed",
-        "gate_value": 0,  # NOT self-employed -> asked about employer-provided stuff
+        "gate_value": 1, 
+        "create_flag": False,
         "gated_columns": [
             "tech_company", "tech_role", "mental_health_benefits",
             "awareness_mental_health_care", "formal_mental_health_discussion",
@@ -557,14 +570,52 @@ STRUCTURAL_MISSINGNESS = [
             "negative_consequences_discussion", "negative_consequences_physical_health",
             "comfortable_discussing_with_coworkers", "comfortable_discussing_with_supervisor",
             "employer_takes_mental_health_seriously", "negative_consequences_open_about_mental_health",
-            "negative_impact_reveal", 
         ],
     },
     {
         "gate_col": "self_employed",
-        "gate_value": 1,  # self-employed -> asked about personal coverage instead
+        "gate_value": 0, 
+        "create_flag": False,   
         "gated_columns": [
             "medical_coverage", "awareness_resources",
+        ],
+    },
+    {
+        "gate_col": "reveal_to_clients_direction",
+        "gate_value": 2,  # "Never" (index 2 in ['Always','Sometimes','Never'])
+        "gated_columns": ["negative_impact_reveal"],
+    },
+    {
+        "gate_col": "reveal_to_coworkers_direction",
+        "gate_value": 2,  # "Never"
+        "gated_columns": ["negative_impact_reveal_coworker"],
+    },
+    {
+        "gate_col": "productivity_affected",
+        "gate_value": 0,  # "No" (index 0 in ['No','Unsure','Yes'])
+        "gated_columns": ["percentage_affected"],
+    },
+    {
+        "gate_col": "productivity_affected",
+        "gate_value": 1,  # "Unsure"
+        "gated_columns": ["percentage_affected"],
+    },
+    {
+        "gate_col": "previous_employers",
+        "gate_value": 0,  # 0 = no previous employers    
+        "create_flag": False, 
+        "gated_columns": [
+            "previous_employers_mental_health_benefits",
+            "awareness_previous_employers",
+            "previous_employers_mental_health_discussion",
+            "previous_employers_resources",
+            "previous_employers_anonymity_protected",
+            "previous_employers_negative_consequences",
+            "previous_employers_negative_consequences_physical",
+            "previous_employers_comfortable_discussing_coworkers",
+            "previous_employers_comfortable_discussing_supervisor",
+            "previous_employers_mental_health_seriously",
+            "previous_employers_negative_consequences_coworkers",
         ],
     },
 ]

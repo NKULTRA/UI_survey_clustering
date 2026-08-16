@@ -1,19 +1,31 @@
 """
 Feature selection diagnostics for the OSMI Mental Health in Tech survey.
 
-Two of these functions expect a different pipeline stage than the other
-two -- this matters, calling them on the wrong stage will error or give
-meaningless results:
+These four functions expect DIFFERENT pipeline stages -- not because of
+an implementation quirk, but because of what they're testing:
 
   - apply_chi_square, apply_mutual_information
-      -> run on prepare_for_feature_selection()'s output. Column names
-         referenced in FEATURE_FILTER_GROUPS (e.g. "mental_health_benefits")
-         still exist at that stage, since one-hot encoding hasn't run yet.
+      -> run on prepare_for_feature_selection()'s output, UNIMPUTED.
+         Column names referenced in FEATURE_FILTER_GROUPS (e.g.
+         "mental_health_benefits") still exist at that stage, since
+         one-hot encoding hasn't run yet. Deliberately NOT run on
+         imputed data: these tests measure real relationships between
+         actual respondent answers -- feeding them imputed (partly
+         fabricated/neutral-filled) values would distort the
+         association being measured, not just avoid a crash. Both
+         functions already handle NaN safely on their own (crosstab /
+         explicit dropna per pair), so unimputed input is correct here,
+         not a workaround.
 
   - apply_variance_threshold, apply_correlation_filter
-      -> run on run_pipeline()'s output (df_processed). Both need purely
-         numeric input (MinMaxScaler, .corr()), which only exists after
-         one-hot encoding has fully run.
+      -> run on the FULLY IMPUTED, fully numeric feature matrix:
+         run_pipeline()'s output, THEN impute_structural_missingness(),
+         THEN fill_remaining_with_mean(). These need every value
+         present (MinMaxScaler, VarianceThreshold, and ideally .corr()
+         too) to reflect the actual feature matrix that will go into
+         scaling/clustering -- variance and correlation computed on
+         partially-missing or placeholder-filled data would not
+         represent the real final features.
 """
 
 import pandas as pd
@@ -27,7 +39,8 @@ from sklearn.feature_selection import VarianceThreshold
 def apply_chi_square(df, feature_filter_groups):
     """
     Chi-square test of independence for each configured feature pair.
-    Expects prepare_for_feature_selection()'s output (pre-one-hot).
+    Expects prepare_for_feature_selection()'s output (pre-one-hot,
+    UNIMPUTED -- see module docstring for why).
     pd.crosstab drops NaN rows automatically (pairwise per pair, not
     globally), so no explicit dropna() needed here.
 
@@ -37,7 +50,8 @@ def apply_chi_square(df, feature_filter_groups):
     "expected real relationship" ones -- see FEATURE_FILTER_GROUPS notes).
     Always sanity-check the `expected` array before trusting a result:
     cells below ~5 mean the chi-square approximation is unreliable
-    (small/sparse contingency table).
+    (small/sparse contingency table) -- see DECISIONS.md for two pairs
+    where this was found and the results treated as unreliable.
     """
     results = {}
 
@@ -52,7 +66,8 @@ def apply_chi_square(df, feature_filter_groups):
 def apply_mutual_information(df, feature_filter_groups):
     """
     Pairwise Mutual Information for each configured feature pair.
-    Expects prepare_for_feature_selection()'s output (pre-one-hot).
+    Expects prepare_for_feature_selection()'s output (pre-one-hot,
+    UNIMPUTED -- see module docstring for why).
     Explicit dropna() per pair, since mutual_info_score (unlike
     pd.crosstab) doesn't handle NaN safely on its own.
 
@@ -74,7 +89,13 @@ def apply_mutual_information(df, feature_filter_groups):
 def apply_variance_threshold(df, threshold=0.0099):
     """
     Variance thresholding across the FULL feature matrix.
-    Expects run_pipeline()'s output (df_processed, fully numeric).
+    Expects a FULLY IMPUTED, fully numeric feature matrix -- i.e.
+    run_pipeline()'s output, run through impute_structural_missingness()
+    and then fill_remaining_with_mean(). No remaining NaN is expected
+    at this point (fillna(0) is kept below only as a defensive
+    fallback, not as the actual imputation strategy -- if it ever
+    actually fires, that signals a column was missed during imputation
+    and should be investigated, not silently accepted).
 
     Min-max scales every column to [0,1] first, so binary/ordinal/
     continuous features become comparable on the same scale before
@@ -90,14 +111,16 @@ def apply_variance_threshold(df, threshold=0.0099):
     age_group is dropped first -- it's a categorical profiling-only
     column (not meant for the model matrix), not something to encode.
 
-    fillna(0) is a TEMPORARY placeholder for this diagnostic only --
-    NOT the actual imputation strategy for the final model input.
-
     Returns: DataFrame [feature, variance, kept], sorted ascending.
     """
     df_model_input = df.drop(columns=["age_group"], errors="ignore")
 
-    df_filled = df_model_input.fillna(0)
+    remaining_na = df_model_input.isnull().sum()
+    if remaining_na.any():
+        print("WARNING: unexpected NaN found post-imputation, in:")
+        print(remaining_na[remaining_na > 0])
+
+    df_filled = df_model_input.fillna(0)  # defensive fallback only, see docstring
 
     X_minmax = MinMaxScaler().fit_transform(df_filled)
 
@@ -116,15 +139,17 @@ def apply_variance_threshold(df, threshold=0.0099):
 def apply_correlation_filter(df, threshold=0.9):
     """
     Full pairwise Spearman correlation matrix + extraction of pairs
-    above |threshold|. Expects run_pipeline()'s output (df_processed,
-    fully numeric).
+    above |threshold|. Expects a FULLY IMPUTED, fully numeric feature
+    matrix (same stage as apply_variance_threshold -- see its docstring).
 
     Spearman (rank-based), not Pearson, since it's valid for ordinal
     data (only assumes a genuine order, not equal-sized intervals) --
     unlike Pearson, which assumes roughly continuous/linear relationships.
 
-    .corr() handles NaN via pairwise deletion automatically -- no
-    fillna() needed here (unlike apply_variance_threshold).
+    .corr() handles NaN via pairwise deletion automatically if any
+    remain, but none are expected post-imputation -- correlations here
+    should reflect the real, fully-imputed feature matrix, not a
+    pairwise-deleted subset of it.
 
     age_group dropped first, same reasoning as apply_variance_threshold.
 
